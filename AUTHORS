@@ -1,0 +1,6 @@
+This SocketIO server based on Gevent and was written by:
+
+  Shuo Li <shuoli84@gmail.com>
+
+Based on gevent_socketio created by:
+  Jeffrey Gelens <jeffrey at noppo.pro>
