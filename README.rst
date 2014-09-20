@@ -1,28 +1,49 @@
 Introduction
-============
+============================================
 
-gevent_socketio2 is socketio 1.0 implementation. It based on gevent_socketio, with lots of modifications in source code to support socketio protocol 1.0. It is under heavy development, production usage is not recommended.
+We love socketio. `gevent_socketio <https://github.com/abourget/gevent-socketio>`_ 
+implements socketio 0.7, this project intend to bring socketio 1.0 to python(gevent) world. It started as a fork of gevent_socketio. This project
+mainly is a port of socketiojs project, so you can see EventEmitter in code. Some code not that clean due to the port, which needs 
+further refine. 
 
-Technical overview
-==================
+Now the library is still in development. 
 
-Depends on 'gevent', 'gevent-websocket', 'pybob', 'pyee'. 
+Some key technical points:
+============================================
 
-pybob provides a convinient request response class.
-pyee is the EventEmitter for python. Since this is a port from socketio, there is lots logic chained by event and listener. 
-
-Documentation and References
-============================
-
-TBD
+* WSGI Handler and WSGI Server
+* Event loops
+  In EngineHandler, the handle_one_response waits on Response. Response holds a gevent Event, which will be set when response.end() called.
+    By doing this, we can end the response at any point, cleaner code.
+  In Websocket transport, we spawn a read loop, which reads frame from websocket and call transport.on_data, which feeds data to engine socket.
 
 
-Installation
-============
+Current stage:
+engineiojs: 
+Parser (Done)
+Transports (XHRPolling done, websocket done, JSONP Polling in progress) 
+Server (Done)
+Socket (Done)
 
-TBD
+socketiojs:
+Middleware (Not started)
+Namespace (Done)
+Server (Done)
+Client (Implemented, not tested)
+Adapter (Implemented, not tested)
+Text message (Done)
+Binary message (Implemented, not tested)
+........
 
-TODO
-============
 
-* Framework support
+I created a chat sample(link tbd), tested on safari, chrome. 
+
+
+
+.. toctree::
+   :maxdepth: 2
+
+Contribution
+==============================================
+
+Any contribution welcomed, bug fix, sample, blog. Lets make python more realtime.
