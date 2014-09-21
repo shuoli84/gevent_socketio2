@@ -36,7 +36,7 @@ Binary message (Implemented, not tested)
 ........
 
 
-I created a chat sample(link tbd), tested on safari, chrome. 
+I created a `chat sample <https://github.com/shuoli84/django_socketio_test>`_, tested on safari, chrome. 
 
 
 
