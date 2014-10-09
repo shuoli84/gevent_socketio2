@@ -1,7 +1,4 @@
 # coding=utf-8
-"""
-The wsgi handler for Engine, it accepts requests for engine protocol
-"""
 from __future__ import absolute_import
 
 import gevent
@@ -11,25 +8,23 @@ import sys
 from webob import Request
 from .response import Response
 from .socket import Socket
+from transports import WebsocketTransport
 import logging
-from socketio.engine.transports import WebsocketTransport
 
 logger = logging.getLogger(__name__)
 
+__all__ = ['EngineHandler']
+
 
 class EngineHandler(WSGIHandler, EventEmitter):
+    """
+    The WSGIHandler for EngineServer
+    It filters out interested requests and process them, leave other requests to super class
+    """
     transports = ('polling', 'websocket')
     clients = {}
 
-    def __init__(self, config, *args, **kwargs):
-        """Create a new SocketIOHandler.
-
-        :param config: dict Configuration for timeouts and intervals
-          that will go down to the other components, transports, etc..
-
-        """
-        self.config = config
-
+    def __init__(self, *args, **kwargs):
         super(EngineHandler, self).__init__(*args, **kwargs)
         EventEmitter.__init__(self)
 

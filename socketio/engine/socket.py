@@ -2,17 +2,16 @@
 Engine socket, a abstract layer for all transports internal api. It is created by Engine.handler with proper parameters
 and used by socketio.socket.
 """
+import json
 
 import random
 import logging
 
+import transports
 import gevent
 from gevent.queue import Queue
-from gevent.event import Event
 from pyee import EventEmitter
 
-from socketio.defaultjson import default_json_loads, default_json_dumps
-from socketio.engine import transports
 
 __all__ = ['Socket']
 
@@ -44,7 +43,7 @@ def default_error_handler(socket, error_name, error_message, endpoint,
 
     # Send an error event through the Socket
     if not quiet:
-        socket.send_packet('event', default_json_dumps(pkt))
+        socket.send_packet('event', json.dumps(pkt))
 
     # Log that error somewhere for debugging...
     logger.error(u"default_error_handler: {}, {} (endpoint={}, msg_id={})".format(
@@ -55,7 +54,6 @@ def default_error_handler(socket, error_name, error_message, endpoint,
 class Socket(EventEmitter):
     """
     Socket is the abstraction of the underlying transport
-    it sends heartbeat packet periodically
     handles upgrade logic
 
     Internal:
@@ -65,8 +63,6 @@ class Socket(EventEmitter):
         Client message handling
 
     The main thread (gevent thread) should block during the request lifecycle.
-
-
     """
 
     STATE_NEW = "NEW"
@@ -75,10 +71,7 @@ class Socket(EventEmitter):
     STATE_CLOSING = "CLOSING"
     STATE_CLOSED = "CLOSED"
 
-    json_loads = staticmethod(default_json_loads)
-    json_dumps = staticmethod(default_json_dumps)
-
-    def __init__(self, request, ping_interval=5000, ping_timeout=10000, error_handler=None):
+    def __init__(self, request, ping_interval=5000, ping_timeout=10000):
         super(Socket, self).__init__()
 
         self.request = request
@@ -94,7 +87,6 @@ class Socket(EventEmitter):
         self.write_buffer = Queue()  # queue for messages to client
         self.server_queue = Queue()  # queue for messages to server
 
-        self.timeout = Event()
         self.wsgi_app_greenlet = None
         self.send_packet_callbacks = []
         self.jobs = []
@@ -110,11 +102,12 @@ class Socket(EventEmitter):
         if transport_name not in handler_types:
             raise Exception('transport name not in query string')
 
-        transport = handler_types[transport_name](request.handler, {})
-        self._set_transport(transport)
-
-        if error_handler is not None:
-            self.error_handler = error_handler
+        handler_class = handler_types[transport_name]
+        if issubclass(handler_class, transports.BaseTransport):
+            transport = (request.handler, {})
+            self._set_transport(transport)
+        else:
+            raise Exception('Not able to construct transport class')
 
     def _set_transport(self, transport):
         self.transport = transport
@@ -135,7 +128,7 @@ class Socket(EventEmitter):
         self.ready_state = self.STATE_OPEN
         self.send_packet(
             "open",
-            self.json_dumps({
+            json.dumps({
                 "sid": self.id,
                 "upgrades": ["websocket"],
                 # "upgrades": [],
@@ -259,57 +252,6 @@ class Socket(EventEmitter):
             self.on_close('ping timeout')
         self.ping_timeout_eventlet = gevent.spawn_later(self.ping_interval + self.ping_timeout, time_out)
 
-    def _set_environ(self, environ):
-        """Save the WSGI environ, for future use.
-
-        This is called by socketio_manage().
-        """
-        self.environ = environ
-
-    def _set_error_handler(self, error_handler):
-        """Changes the default error_handler function to the one specified
-
-        This is called by socketio_manage().
-        """
-        self.error_handler = error_handler
-
-    def _set_json_loads(self, json_loads):
-        """Change the default JSON decoder.
-
-        This should be a callable that accepts a single string, and returns
-        a well-formed object.
-        """
-        self.json_loads = json_loads
-
-    def _set_json_dumps(self, json_dumps):
-        """Change the default JSON decoder.
-
-        This should be a callable that accepts a single string, and returns
-        a well-formed object.
-        """
-        self.json_dumps = json_dumps
-
-    def _get_next_msgid(self):
-        """This retrieves the next value for the 'id' field when sending
-        an 'event' or 'message' or 'json' that asks the remote client
-        to 'ack' back, so that we trigger the local callback.
-        """
-        self.ack_counter += 1
-        return self.ack_counter
-
-    def _save_ack_callback(self, msgid, callback):
-        """Keep a reference of the callback on this socket."""
-        if msgid in self.ack_callbacks:
-            return False
-        self.ack_callbacks[msgid] = callback
-
-    def _pop_ack_callback(self, msgid):
-        """Fetch the callback for a given msgid, if it exists, otherwise,
-        return None"""
-        if msgid not in self.ack_callbacks:
-            return None
-        return self.ack_callbacks.pop(msgid)
-
     def __str__(self):
         result = ['sessid=%r' % self.id]
         if self.ready_state == self.STATE_OPEN:
@@ -320,21 +262,6 @@ class Socket(EventEmitter):
             result.append('server_queue[%s]' % self.server_queue.qsize())
 
         return ' '.join(result)
-
-    def __getitem__(self, key):
-        """This will get the nested Namespace using its '/chat' reference.
-
-        Using this, you can go from one Namespace to the other (to emit, add
-        ACLs, etc..) with:
-
-          adminnamespace.socket['/chat'].add_acl_method('kick-ban')
-
-        """
-        return self.active_ns[key]
-
-    def __hasitem__(self, key):
-        """Verifies if the namespace is active (was initialized)"""
-        return key in self.active_ns
 
     def send(self, data):
         self.send_packet('message', data)
@@ -381,10 +308,9 @@ class Socket(EventEmitter):
             logger.debug("flushing buffer to transport")
             self.transport.send(msg)
 
-    def get_available_upgrades(self):
-        availabel_upgrades = ["websocket"]
-        # TODO FIX THIS, HOOK UP WITH SERVER
-        return availabel_upgrades
+    @staticmethod
+    def get_available_upgrades():
+        return ["websocket"]
 
     def close(self):
         if self.STATE_OPEN == self.ready_state:
@@ -416,7 +342,6 @@ class Socket(EventEmitter):
         """Detach this socket from the server. This should be done in
         conjunction with kill(), once all the jobs are dead, detach the
         socket for garbage collection."""
-
         logger.debug("Removing %s sockets" % self)
         if self.id in self.request.handler.clients:
             self.request.handler.clients.pop(self.id)
