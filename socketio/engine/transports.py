@@ -69,6 +69,7 @@ class BaseTransport(EventEmitter):
             # Close the response when the transport closes
             self.request.response.end(200, 'closed')
         self.do_close()
+        self.emit('close')
 
     def _cleanup(self):
         logger.debug('clean up in transport')
@@ -76,7 +77,7 @@ class BaseTransport(EventEmitter):
         self.request = None
         self.handler = None
 
-    def on_request(self, request):
+    def process_request(self, request):
         self.handler = request.handler
         self.request = request
 
@@ -109,7 +110,7 @@ class PollingTransport(BaseTransport):
         self.data_request = None
         super(PollingTransport, self).__init__(*args, **kwargs)
 
-    def on_request(self, request):
+    def process_request(self, request):
         # We intentionally not call super
 
         if request.method == 'GET':
@@ -232,8 +233,8 @@ class PollingTransport(BaseTransport):
 
 class XHRPollingTransport(PollingTransport):
 
-    def on_request(self, request):
-        super(XHRPollingTransport, self).on_request(request)
+    def process_request(self, request):
+        super(XHRPollingTransport, self).process_request(request)
 
         if 'OPTIONS' == request.method:
             request.response.headers = self.handler.request.headers
@@ -307,7 +308,7 @@ class WebsocketTransport(BaseTransport):
         self.jobs = []
         super(WebsocketTransport, self).__init__(*args, **kwargs)
 
-    def on_request(self, request):
+    def process_request(self, request):
         self.request = request
         if hasattr(request, 'websocket'):
             self.websocket = request.websocket

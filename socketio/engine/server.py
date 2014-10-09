@@ -22,7 +22,7 @@ class Server(WSGIServer):
     }
 
     def __init__(self, *args, **kwargs):
-        self.sockets = {}
+        self.engine_sockets = {}
         self.transports = kwargs.pop('transports', None)
         self.resource = kwargs.pop('resource', 'socketio')
 

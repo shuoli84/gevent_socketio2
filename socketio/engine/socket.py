@@ -53,20 +53,48 @@ def default_error_handler(socket, error_name, error_message, endpoint,
 
 class Socket(EventEmitter):
     """
-    Socket is the abstraction of the underlying transport
-    handles upgrade logic
+    Socket is the interface which provides following features:
+    1. send packet out
+    2. emit 'packet' when new packet arrived
 
-    Internal:
-    It creates several eventlet:
-        heartbeat
+    Naming Convention
+    ===============
+    on_xxx are event handlers. It is better not being called directly.
+    _xxx are private methods.
+
+    States
+    ===============
+    STATE_NEW: The socket object just created
+    STATE_OPEN: The socket is open, ready for send and receive message
+    STATE_CLOSING: The socket is closing, cleaning up
+    STATE_CLOSED: The socket closed
+
+    Events
+    ===============
+    Socket is an EventEmitter, following events can be listened on:
+
+    open: the socket is set up, transport is ready to send data
+    packet: received a packet from underlying transport
+    message: received a message packet from underlying transport
+    close: the socket closed
+
+    Event Loop
+    ===============
+    It creates several event loops:
+        heartbeat timeout checking
         Server message handling
         Client message handling
 
-    The main thread (gevent thread) should block during the request lifecycle.
+    Close
+    ================
+    There are 2 situations:
+    1. Client send out a close message. Transport get the message and close itself, then emit 'close', socket call
+    on_close which close the socket directly
+    2. Server invoke socket.close(), then socket state change to CLOSING and call transport.close(), which involve
+    sending out buffered data etc. Then it will emit the 'close' and socket call on_close
     """
 
     STATE_NEW = "NEW"
-    STATE_OPENING = "OPENING"
     STATE_OPEN = "OPEN"
     STATE_CLOSING = "CLOSING"
     STATE_CLOSED = "CLOSED"
@@ -78,7 +106,6 @@ class Socket(EventEmitter):
 
         self.id = str(random.random())[2:]
         self.ready_state = self.STATE_NEW
-        self.environ = None
         self.upgraded = False
 
         self.ping_interval = ping_interval
@@ -88,7 +115,6 @@ class Socket(EventEmitter):
         self.server_queue = Queue()  # queue for messages to server
 
         self.wsgi_app_greenlet = None
-        self.send_packet_callbacks = []
         self.jobs = []
         self.error_handler = default_error_handler
         self.ping_timeout_eventlet = None
@@ -104,10 +130,12 @@ class Socket(EventEmitter):
 
         handler_class = handler_types[transport_name]
         if issubclass(handler_class, transports.BaseTransport):
-            transport = (request.handler, {})
+            transport = handler_class(request.handler, {})
             self._set_transport(transport)
         else:
             raise Exception('Not able to construct transport class')
+
+        self.process_request(request)
 
     def _set_transport(self, transport):
         self.transport = transport
@@ -123,23 +151,28 @@ class Socket(EventEmitter):
         if self.ping_timeout_eventlet:
             self.ping_timeout_eventlet.kill()
 
-    def on_open(self):
-        logger.debug('in on_open socket')
+    def open(self):
+        """
+        The socket is ready to go
+        :return:
+        """
         self.ready_state = self.STATE_OPEN
         self.send_packet(
             "open",
             json.dumps({
                 "sid": self.id,
-                "upgrades": ["websocket"],
-                # "upgrades": [],
+                "upgrades": ["websocket"],  # FIXME don't hard code this
                 "pingInterval": 30000,
                 "pingTimeout": 60000})
         )
         self.emit("open")
         self._set_ping_timeout_eventlet()
 
-    def on_request(self, request):
-        self.transport.on_request(request)
+    def process_request(self, request):
+        """
+        Process the incoming request
+        """
+        self.transport.process_request(request)
 
     def on_packet(self, packet):
         if self.STATE_OPEN == self.ready_state:
@@ -168,6 +201,9 @@ class Socket(EventEmitter):
         self.on_close('transport error', error)
 
     def on_close(self, reason, description=None):
+        """
+        When transport closed, this method will be called. It will remove all jobs, and do cleanup
+        """
         if self.STATE_CLOSED != self.ready_state:
             if self.ping_timeout_eventlet:
                 self.ping_timeout_eventlet.kill()
@@ -184,7 +220,7 @@ class Socket(EventEmitter):
             self._clear_transport()
             self.ready_state = self.STATE_CLOSED
             self.emit("close", reason, description)
-            self.write_buffer = Queue()
+            self.write_buffer = None
 
     def _fail_upgrade(self, transport):
         logger.debug('client did not complete upgrade - closing transport')
@@ -234,7 +270,6 @@ class Socket(EventEmitter):
                 self.upgraded = True
                 self._clear_transport()
                 self._set_transport(transport)
-                self.emit("upgrade", transport)
                 self._set_ping_timeout_eventlet()
                 self.upgrade_eventlet.kill()
                 self.flush_nowait()
@@ -245,6 +280,10 @@ class Socket(EventEmitter):
         transport.on("packet", on_packet)
 
     def _set_ping_timeout_eventlet(self):
+        """
+        set the ping timeout eventlet, which will close the socket if no packets received in timeout
+        :return:
+        """
         if self.ping_timeout_eventlet:
             self.ping_timeout_eventlet.kill()
 
@@ -256,17 +295,17 @@ class Socket(EventEmitter):
         result = ['sessid=%r' % self.id]
         if self.ready_state == self.STATE_OPEN:
             result.append('open')
-        if self.write_buffer.qsize():
-            result.append('client_queue[%s]' % self.write_buffer.qsize())
-        if self.server_queue.qsize():
-            result.append('server_queue[%s]' % self.server_queue.qsize())
-
         return ' '.join(result)
 
     def send(self, data):
+        """
+        Shortcut for send message packet
+        :param data: The data to be send
+        :return: None
+        """
         self.send_packet('message', data)
-        return self
 
+    # shortcut
     write = send
 
     def send_packet(self, packet_type, data=None):
@@ -278,28 +317,30 @@ class Socket(EventEmitter):
             "type": packet_type
         }
 
-        if data:
+        if data is not None:
             packet["data"] = data
-
-        self.emit("packet_created", packet)
 
         if self.ready_state != self.STATE_CLOSING:
             self.put_client_msg(packet)
             self.flush()
 
     def flush_nowait(self):
-        logger.debug("entering flushing buffer to transport " + str(self.transport.writable) + " " + str(self.write_buffer.qsize()))
-        if self.ready_state != self.STATE_CLOSED and self.transport.writable and self.write_buffer.qsize():
-            msg = []
-            while self.write_buffer.qsize():
-                msg.append(self.write_buffer.get())
+        """
+        Non-blocking flush
+        :return:
+        """
+        self.flush(nowait=True)
 
-            logger.debug("flushing buffer to transport")
-            self.transport.send(msg)
-
-    def flush(self):
+    def flush(self, nowait=False):
+        """
+        Flush write buffer, if buffer is empty, wait on it.
+        :param nowait: Whether wait on write buffer or return directly
+        """
         logger.debug("entering flushing buffer to transport " + str(self.transport.writable) + " " + str(self.write_buffer.qsize()))
         if self.ready_state != self.STATE_CLOSED and self.transport.writable:
+            if nowait and self.write_buffer.qsize() == 0:
+                return
+
             logger.debug('wait for the queue %s' % self.write_buffer.qsize())
             msg = [self.write_buffer.get()]
             while self.write_buffer.qsize():
@@ -308,43 +349,16 @@ class Socket(EventEmitter):
             logger.debug("flushing buffer to transport")
             self.transport.send(msg)
 
-    @staticmethod
-    def get_available_upgrades():
-        return ["websocket"]
-
     def close(self):
-        if self.STATE_OPEN == self.ready_state:
-            self.ready_state = self.STATE_CLOSING
-            self.transport.close()  # TODO transport needs a close method
-
-    def kill(self, detach=False):
-        """This function must/will be called when a socket is to be completely
-        shut down, closed by connection timeout, connection error or explicit
-        disconnection from the client.
-
-        It will call all of the Namespace's
-        :meth:`~socketio.namespace.BaseNamespace.disconnect` methods
-        so that you can shut-down things properly.
-
         """
-        # Clear out the callbacks
-        self.ack_callbacks = {}
+        Close the socket. The ready_state change from STATE_OPEN -> STATE_CLOSING.
+        When transport closed, the on_close be called and STATE_CLOSING -> STATE_CLOSED.
+        :return:
+        """
         if self.STATE_OPEN == self.ready_state:
             self.ready_state = self.STATE_CLOSING
-            self.server_queue.put_nowait(None)
-
-        if detach:
-            self.detach()
-
-        gevent.killall(self.jobs)
-
-    def detach(self):
-        """Detach this socket from the server. This should be done in
-        conjunction with kill(), once all the jobs are dead, detach the
-        socket for garbage collection."""
-        logger.debug("Removing %s sockets" % self)
-        if self.id in self.request.handler.clients:
-            self.request.handler.clients.pop(self.id)
+            self.transport.close()
+            self.on_close('closed by server')
 
     def put_client_msg(self, msg):
         """Writes to the client's pipe, to end up in the browser"""
@@ -375,14 +389,3 @@ class Socket(EventEmitter):
         handler = self.error_handler
         return handler(
             self, error_name, error_message, endpoint, msg_id, quiet)
-
-    def spawn(self, fn, *args, **kwargs):
-        """Spawn a new Greenlet, attached to this Socket instance.
-
-        It will be monitored by the "watcher" method
-        """
-
-        logger.debug("Spawning sub-Socket Greenlet: %s" % fn.__name__)
-        job = gevent.spawn(fn, *args, **kwargs)
-        self.jobs.append(job)
-        return job
