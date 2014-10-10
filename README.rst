@@ -6,7 +6,12 @@ implements socketio 0.7, this project intend to bring socketio 1.0 to python(gev
 mainly is a port of socketiojs project, so you can see EventEmitter in code. Some code not that clean due to the port, which needs 
 further refine. 
 
-Now the library is still in development. 
+Now the library is still in development. But you can get a working chat following `chat sample <https://github.com/shuoli84/django_socketio_test>`_
+
+Installation
+============================================
+
+pip install gevent_socketio2
 
 Some key technical points:
 ============================================
