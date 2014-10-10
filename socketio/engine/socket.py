@@ -10,7 +10,7 @@ import logging
 import transports
 import gevent
 from gevent.queue import Queue
-from pyee import EventEmitter
+from ..event_emitter import EventEmitter
 
 
 __all__ = ['Socket']
@@ -91,7 +91,8 @@ class Socket(EventEmitter):
     1. Client send out a close message. Transport get the message and close itself, then emit 'close', socket call
     on_close which close the socket directly
     2. Server invoke socket.close(), then socket state change to CLOSING and call transport.close(), which involve
-    sending out buffered data etc. Then it will emit the 'close' and socket call on_close
+    sending out buffered data etc. Then the transport will emit event 'close' and the socket object's on_close be
+    invoked
     """
 
     STATE_NEW = "NEW"
@@ -99,7 +100,7 @@ class Socket(EventEmitter):
     STATE_CLOSING = "CLOSING"
     STATE_CLOSED = "CLOSED"
 
-    def __init__(self, request, ping_interval=5000, ping_timeout=10000):
+    def __init__(self, request, ping_interval=5000, ping_timeout=10000, upgrade_timeout=30):
         super(Socket, self).__init__()
 
         self.request = request
@@ -110,6 +111,7 @@ class Socket(EventEmitter):
 
         self.ping_interval = ping_interval
         self.ping_timeout = ping_timeout
+        self.upgrade_timeout = upgrade_timeout
 
         self.write_buffer = Queue()  # queue for messages to client
         self.server_queue = Queue()  # queue for messages to server
@@ -141,15 +143,16 @@ class Socket(EventEmitter):
         self.transport = transport
         self.transport.once('error', self.on_error)
         self.transport.on('packet', self.on_packet)
-
-        # On drain event, we call flush_nowait which sends out buffered messages
         self.transport.on('drain', self.flush_nowait)
         self.transport.once('close', self.on_close)
 
     def _clear_transport(self):
+        self.transport.remove_listener('close', self.on_close)
+        self.transport.remove_listener('drain', self.on_packet)
+        self.transport.remove_listener('packet', self.on_packet)
+        self.transport.remove_listener('error', self.on_error)
         self.transport.on('error', lambda: logger.debug('error triggered by discarded transport'))
-        if self.ping_timeout_eventlet:
-            self.ping_timeout_eventlet.kill()
+        self.transport = None
 
     def open(self):
         """
@@ -175,16 +178,18 @@ class Socket(EventEmitter):
         self.transport.process_request(request)
 
     def on_packet(self, packet):
+        """
+        Invoked when underlying transport received a new packet
+        :param packet:
+        """
         if self.STATE_OPEN == self.ready_state:
-            logger.debug("packet")
-
             self.emit("packet", packet)
             self._set_ping_timeout_eventlet()
 
             packet_type = packet["type"]
 
             if packet_type == 'ping':
-                logger.debug("got ping")
+                logger.debug("got ping, send pong")
                 self.send_packet('pong')
 
             elif packet_type == 'message':
@@ -197,10 +202,13 @@ class Socket(EventEmitter):
             logger.debug("Packet received with closed socket")
 
     def on_error(self, error=None):
+        """
+        Invoked when an error message received from transport
+        """
         logger.debug("transport error: %s" % error)
         self.on_close('transport error', error)
 
-    def on_close(self, reason, description=None):
+    def on_close(self, *args, **kwargs):
         """
         When transport closed, this method will be called. It will remove all jobs, and do cleanup
         """
@@ -219,27 +227,23 @@ class Socket(EventEmitter):
 
             self._clear_transport()
             self.ready_state = self.STATE_CLOSED
-            self.emit("close", reason, description)
+            self.emit("close", *args, **kwargs)
             self.write_buffer = None
-
-    def _fail_upgrade(self, transport):
-        logger.debug('client did not complete upgrade - closing transport')
-
-        # Cancel jobs
-        self.kill(detach=True)
-
-        if self.check_eventlet:
-            self.check_eventlet.kill()
-            self.check_eventlet = None
-
-        if 'open' == transport.ready_state:
-            transport.close()
 
     def maybe_upgrade(self, transport):
         logger.debug("might upgrade from %s to %s" % (self.transport.name, transport.name))
 
-        # TODO MAKE TIME OUT CONFIGURABLE
-        self.upgrade_eventlet = gevent.spawn_later(1, self._fail_upgrade, transport)
+        def fail_upgrade():
+            logger.debug('client did not complete upgrade - closing transport')
+
+            if self.check_eventlet:
+                self.check_eventlet.kill()
+                self.check_eventlet = None
+
+            if 'open' == transport.ready_state:
+                transport.close()
+
+        self.upgrade_eventlet = gevent.spawn_later(self.upgrade_timeout, fail_upgrade)
 
         def check():
             if 'polling' == self.transport.name and self.transport.writable:
@@ -260,20 +264,23 @@ class Socket(EventEmitter):
 
                 def loop():
                     while True:
-                        gevent.sleep(0.1)
+                        gevent.sleep(1)
                         check()
 
                 self.check_eventlet = gevent.Greenlet.spawn(loop)
 
             elif 'upgrade' == packet["type"] and self.ready_state == self.STATE_OPEN:
                 logger.debug("got upgrade packet - upgrading")
-                self.upgraded = True
+
+                transport.remove_listener('packet', on_packet)
+
                 self._clear_transport()
                 self._set_transport(transport)
+
+                self.upgraded = True
                 self._set_ping_timeout_eventlet()
                 self.upgrade_eventlet.kill()
                 self.flush_nowait()
-                transport.remove_listener('packet', on_packet)
             else:
                 transport.close()
 

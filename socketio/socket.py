@@ -122,13 +122,13 @@ class Socket(EventEmitter):
         self.adapter.remove_all(self.id)
         self.rooms = []
 
-    def on_connect(self):
+    def on_connect(self, *args, **kwargs):
         logger.debug('socket connected - writing packet')
         self.join(self.id)
         self.packet({'type': parser.CONNECT})
         self.namespace.connected[self.id] = self
 
-    def on_packet(self, packet):
+    def on_packet(self, packet, *args, **kwargs):
         logger.debug('got packet %s', packet['type'])
 
         _type = packet['type']
@@ -183,7 +183,7 @@ class Socket(EventEmitter):
         logger.debug('got disconnect packet')
         self.on_close('client namespace disconnect')
 
-    def on_close(self, reason=None):
+    def on_close(self, reason=None, *args, **kwargs):
         if not self.connected:
             return
 

@@ -116,7 +116,7 @@ class Client(EventEmitter):
             else:
                 logger.debug('no socket for namespace %s', packet['nsp'])
 
-    def on_close(self, reason):
+    def on_close(self, reason, *args, **kwargs):
         self.destroy()
 
         for socket in self.sockets:
@@ -125,7 +125,7 @@ class Client(EventEmitter):
         self.decoder.destroy()
 
     def destroy(self):
-        self.engine_socket.remove_listener('data', self.on_data)
+        self.engine_socket.remove_listener('message', self.on_data)
         self.engine_socket.remove_listener('close', self.on_close)
         self.decoder.remove_listener('decoded', self.on_decoded)
 

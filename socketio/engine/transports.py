@@ -3,10 +3,10 @@ import urlparse
 import gevent
 
 from geventwebsocket import WebSocketError
-from pyee import EventEmitter
 
 import logging
 import re
+from ..event_emitter import EventEmitter
 from .parser import Parser
 
 logger = logging.getLogger(__name__)
@@ -64,12 +64,20 @@ class BaseTransport(EventEmitter):
         raise NotImplementedError()
 
     def close(self):
+        """
+        Close the transport, it may happen in:
+        1. The client send a close message
+        2. The server did an upgrade, the polling transport will be closed
+        3. The server close the socket
+        4. There is one transmitting error happened
+        :param reason: optional reason
+        :return:
+        """
         self.ready_state = 'closing'
         if not self.request.response.is_set:
             # Close the response when the transport closes
             self.request.response.end(200, 'closed')
         self.do_close()
-        self.emit('close')
 
     def _cleanup(self):
         logger.debug('clean up in transport')
@@ -98,7 +106,7 @@ class BaseTransport(EventEmitter):
     def on_data(self, data):
         self.on_packet(Parser.decode_packet(data))
 
-    def on_close(self):
+    def on_close(self, *args, **kwargs):
         self.ready_state = 'closed'
         self.emit('close')
 

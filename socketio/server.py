@@ -53,7 +53,7 @@ class SocketIOServer(EngineServer):
         logger.debug('closing socketio server')
         if '/' in self.namespaces:
             for socket in self.namespaces['/'].sockets:
-                socket.on_close()
+                socket.on_close(reason='the server closed')
 
         super(SocketIOServer, self).close()
 
