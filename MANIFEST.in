@@ -1,3 +1,8 @@
 include LICENSE
 include README.rst
 recursive-include docs *
+recursive-exclude docs *.pyc
+recursive-exclude docs *.pyo
+recursive-include socketio *.py
+recursive-exclude socketio *.pyc
+recursive-exclude socketio *.pyo

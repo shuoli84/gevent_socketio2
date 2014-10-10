@@ -1,8 +1,8 @@
 from setuptools import setup
 setup(
   name = 'gevent_socketio2',
-  packages = ['socketio'],
-  version = '0.1',
+  packages = ['socketio', 'socketio.engine', 'socketio.event_emitter'],
+  version = '0.1.2',
   description = 'A gevent implementation for socketio protocol 1.0',
   author = 'Shuo Li',
   author_email = 'shuoli84@gmail.com',
