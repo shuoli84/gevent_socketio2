@@ -1,11 +1,12 @@
 from gevent.monkey import patch_all
+from socketio.engine.server import Server
+
 patch_all()
 
 import json
 from unittest import TestCase
 import gevent
 import sys
-from socketio.engine.handler import EngineHandler
 from socketio.engine.parser import Parser
 from socketio.server import serve
 import requests
@@ -97,7 +98,7 @@ class EngineHandlerTestCase(TestCase):
             return requests.get(url)
 
         get_job = gevent.spawn(get_request, self.root_url + ('?transport=polling&sid=%s' % sid))
-        socket = EngineHandler.clients[sid]
+        socket = Server.engine_sockets[sid]
         self.assertIsNotNone(socket)
 
         socket.send_packet('message', 'hello')
@@ -107,7 +108,11 @@ class EngineHandlerTestCase(TestCase):
         self.assertEqual(response.status_code, 200)
 
         self.assertEqual(len([Parser.decode_payload(bytearray(response.content))]), 1)
+        found = False
         for p, i, t in Parser.decode_payload(bytearray(response.content)):
             self.assertEqual(p['type'], 'message')
             data = p['data']
-            self.assertEqual(data, 'hello')
+            if data == 'hello':
+                found = True
+
+        self.assertTrue(found)

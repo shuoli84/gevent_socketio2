@@ -3,7 +3,7 @@ import logging
 log = logging.getLogger(__name__)
 
 
-def has_bin(*args):
+def has_bin(args):
     """
     Helper function checks whether args contains bytearray
     :param args:

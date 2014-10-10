@@ -20,9 +20,9 @@ class Server(WSGIServer):
         'close_timeout': 60,
         'heartbeat_interval': 25,
     }
+    engine_sockets = {}
 
     def __init__(self, *args, **kwargs):
-        self.engine_sockets = {}
         self.transports = kwargs.pop('transports', None)
         self.resource = kwargs.pop('resource', 'socketio')
 

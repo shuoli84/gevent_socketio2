@@ -19,7 +19,7 @@ __all__ = ['EngineHandler']
 class EngineHandler(WSGIHandler, EventEmitter):
     """
     The WSGIHandler for EngineServer
-    It filters out interested requests and process them, leave other requests to super class
+    It filters out interested requests and process them, leave other requests to the WSGIHandler
     """
     transports = ('polling', 'websocket')
 

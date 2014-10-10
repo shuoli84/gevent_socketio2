@@ -100,7 +100,7 @@ class Parser(object):
                 }
 
         # Binary data
-        packet_type = int(chr(data[0]))
+        packet_type = data[0]
         return {
             "type": Parser.packet_type_lists[packet_type],
             "data": data[1:]
