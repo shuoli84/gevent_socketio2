@@ -92,6 +92,8 @@ class EngineHandler(WSGIHandler, EventEmitter):
         # Call super handle_one_repsponse() to do timing, logging etc
         super(EngineHandler, self).handle_one_response()
 
+        self.emit('cleanup')
+
     def _do_handshake(self, b64, request):
         """
         handshake with client to build a socket

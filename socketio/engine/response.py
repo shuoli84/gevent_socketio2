@@ -5,6 +5,10 @@ from gevent.event import Event
 
 
 class Response(WSGIResponse, EventEmitter):
+    """
+    The Main reason for this class is make the response waitable. The primary event loop can listen on response
+    when end() called anywhere, the main loop activated and it can send the response to client.
+    """
 
     class ResponseAlreadyEnded(Exception):
         pass
@@ -29,8 +33,14 @@ class Response(WSGIResponse, EventEmitter):
         self.emit('post_end')
 
     def join(self):
+        """
+        Wait on the response object
+        """
         return self.event.wait()
 
     @property
     def is_set(self):
+        """
+        :return:  Whether the response object already ended
+        """
         return self.event.is_set()

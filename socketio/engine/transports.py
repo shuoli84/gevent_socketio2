@@ -1,11 +1,10 @@
 import json
 import urlparse
 import gevent
-
 from geventwebsocket import WebSocketError
-
-import logging
 import re
+import logging
+
 from ..event_emitter import EventEmitter
 from .parser import Parser
 
@@ -53,12 +52,12 @@ class BaseTransport(EventEmitter):
         self.writable = False
         self.should_close = False
 
-    def write(self, data=""):
-        if 'Content-Length' not in self.handler.response_headers_list:
-            self.handler.response_headers.append(('Content-Length', len(data)))
-            self.handler.response_headers_list.append('Content-Length')
-
-        self.handler.write_smart(data)
+    def send(self, packets):
+        """
+        The send interface, subclass must overwrite this method to provide correct implementation
+        :param data: The data
+        """
+        raise NotImplementedError()
 
     def do_close(self):
         raise NotImplementedError()
@@ -86,6 +85,11 @@ class BaseTransport(EventEmitter):
         self.handler = None
 
     def process_request(self, request):
+        """
+        Process the incoming request, in WSGI world, each request maps to one handler.
+        :param request:
+        :return:
+        """
         self.handler = request.handler
         self.request = request
 
@@ -206,7 +210,6 @@ class PollingTransport(BaseTransport):
         """
         Encode and Send packets
         :param packets: The packets list
-        :return: None
         """
         if self.should_close:
             packets.push({type: 'close'})
@@ -216,12 +219,7 @@ class PollingTransport(BaseTransport):
         encoded = Parser.encode_payload(packets, self.supports_binary)
         self.write(encoded)
 
-    def write(self, data=""):
-        logger.debug('writing %s' % data)
-
-        self.do_write(data)
-
-    def do_write(self, data):
+    def write(self, data):
         raise NotImplementedError()
 
     def do_close(self):
@@ -249,7 +247,7 @@ class XHRPollingTransport(PollingTransport):
             request.response.headers['Access-Control-Allow-Headers'] = 'Content-Type'
             request.response.status = 200
 
-    def do_write(self, data):
+    def write(self, data):
         is_string = type(data) == str
         content_type = 'text/plain; charset=UTF-8' if is_string else 'application/octet-stream'
         content_length = str(len(data))
@@ -294,7 +292,7 @@ class JSONPollingTransport(PollingTransport):
             # TODO ESCAPE HANDLING
             super(JSONPollingTransport, self).on_data(data)
 
-    def do_write(self, data):
+    def write(self, data):
         js = json.dumps(data)
 
         args = urlparse.parse_qs(self.handler.environ.get("QUERY_STRING"))
