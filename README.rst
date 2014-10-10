@@ -24,13 +24,16 @@ Some key technical points:
 
 
 Current stage:
-- engineiojs: 
+
+engineiojs
+
 - Parser (Done)
 - Transports (XHRPolling done, websocket done, JSONP Polling in progress) 
 - Server (Done)
 - Socket (Done)
 
 socketiojs:
+
 - Middleware (Not started)
 - Namespace (Done)
 - Server (Done)
@@ -38,7 +41,7 @@ socketiojs:
 - Adapter (Implemented, not tested)
 - Text message (Done)
 - Binary message (Done)
-........
+- ........
 
 
 I created a `chat sample <https://github.com/shuoli84/django_socketio_test>`_, tested on safari, chrome. 
