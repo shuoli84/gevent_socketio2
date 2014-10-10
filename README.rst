@@ -24,20 +24,20 @@ Some key technical points:
 
 
 Current stage:
-engineiojs: 
-Parser (Done)
-Transports (XHRPolling done, websocket done, JSONP Polling in progress) 
-Server (Done)
-Socket (Done)
+- engineiojs: 
+- Parser (Done)
+- Transports (XHRPolling done, websocket done, JSONP Polling in progress) 
+- Server (Done)
+- Socket (Done)
 
 socketiojs:
-Middleware (Not started)
-Namespace (Done)
-Server (Done)
-Client (Implemented, not tested)
-Adapter (Implemented, not tested)
-Text message (Done)
-Binary message (Implemented, not tested)
+- Middleware (Not started)
+- Namespace (Done)
+- Server (Done)
+- Client (Implemented, not tested)
+- Adapter (Implemented, not tested)
+- Text message (Done)
+- Binary message (Done)
 ........
 
 
