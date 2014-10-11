@@ -3,14 +3,17 @@ import logging
 log = logging.getLogger(__name__)
 
 
-def has_bin(args):
+def has_bin(arg):
     """
     Helper function checks whether args contains bytearray
     :param args:
     :return: (bool)
     """
-    for arg in args:
-        if type(arg) is bytearray:
-            return True
+    if type(arg) is list or type(arg) is tuple:
+        return reduce(lambda has_binary, item: has_binary or has_bin(item), arg, False)
+    if type(arg) is bytearray:
+        return True
+    if type(arg) is dict:
+        return reduce(lambda has_binary, item: has_binary or has_bin(item), [v for k, v in arg.items()], False)
 
     return False

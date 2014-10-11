@@ -19,7 +19,7 @@ class EventEmitter(object):
             # Add the necessary function
             self._events[event].append(f)
 
-        if (f==None):
+        if f is None:
             return _on
         else:
             return _on(f)
@@ -60,6 +60,3 @@ class EventEmitter(object):
 
     def listeners(self, event):
         return self._events[event]
-
-# Backwards compatibility.
-Event_emitter = EventEmitter;

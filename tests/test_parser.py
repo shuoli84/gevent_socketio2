@@ -1,5 +1,6 @@
 # coding=utf-8
 from unittest import TestCase
+from socketio import has_bin
 import socketio.parser as Parser
 
 
@@ -35,6 +36,19 @@ class ParserTest(TestCase):
 
         for i in encoded:
             decoder.add(i)
+
+    def test_has_bin(self):
+        self.assertFalse(has_bin([{'text':'hello'}]))
+        self.assertTrue(has_bin([bytearray('abc')]))
+        self.assertTrue(has_bin([{
+            'data': bytearray('abc')
+        }]))
+        self.assertFalse(has_bin([{
+            'data': "a",
+            'dict': {
+                'what': 'the'
+            }
+        }]))
 
     def test_encode(self):
         self._test_packet({
