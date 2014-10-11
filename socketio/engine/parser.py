@@ -44,9 +44,9 @@ class Parser(object):
         data = packet.get("data", None)
 
         type_buffer = str(Parser.packet_types[packet['type']])
-
         if data:
             if type(data) == bytearray:
+                type_buffer = bytearray([Parser.packet_types[packet['type']]])
                 if not supports_binary:
                     return Parser.encode_base64_packet(packet)
 
@@ -186,9 +186,13 @@ class Parser(object):
         for packet in packets:
             encoded_packet = Parser.encode_packet(packet, supports_binary=True)
 
+            if type(encoded_packet) is str:
+                length_buf = bytearray([0])
+            else:
+                length_buf = bytearray([1])
             str_len = str(len(encoded_packet))
             str_len = bytearray([int(c) for c in str_len])
-            length_buf = bytearray([0]) + str_len + bytearray([255])
+            length_buf = length_buf + str_len + bytearray([255])
 
             if type(encoded_packet) == str:
                 out_buffer += length_buf + bytearray(encoded_packet)
