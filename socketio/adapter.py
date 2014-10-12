@@ -2,30 +2,45 @@
 """
 The fork of socketio-adapter, which keeps track of all the sockets and able to broadcast packets
 """
-from pyee import EventEmitter
-from socketio import parser
+import parser
 
 
-class Adapter(EventEmitter):
+class Adapter(object):
+    """
+    Adapter provides broadcast support
+    """
+
     def __init__(self, namespace):
         super(Adapter, self).__init__()
 
         self.namespace = namespace
         self.rooms = {}
         self.sids = {}
-        self.encoder = parser.Encoder
 
     def add(self, id, room, callback=None):
+        """
+        Add the id to room
+        :param id:
+        :param room:
+        :param callback:
+        :return:
+        """
         self.sids[id] = self.sids.get(id, {})
         self.sids[id][room] = True
         self.rooms[room] = self.rooms.get(room, {})
         self.rooms[room][id] = True
 
         if callback:
-            # CHECK WHETER gevent.sleep(0) needed
             callback()
 
     def remove(self, id, room, callback=None):
+        """
+        Remove the socket identified by id from room
+        :param id:
+        :param room:
+        :param callback:
+        :return:
+        """
         self.sids[id] = self.sids.get(id, {})
         self.rooms[room] = self.rooms.get(room, {})
         del self.sids[id][room]
@@ -38,6 +53,11 @@ class Adapter(EventEmitter):
             callback()
 
     def remove_all(self, id):
+        """
+        Remove the socket with id from this adapter, quit all rooms
+        :param id:
+        :return:
+        """
         rooms = self.sids.get(id, None)
         if rooms:
             for room, flag in rooms.items():
@@ -51,15 +71,26 @@ class Adapter(EventEmitter):
             del self.sids[id]
 
     def broadcast(self, packet, options):
-        rooms = options.get('rooms', None)
-        exceptions = options.get('except', None)
-        flags = options.get('flags', None)
+        """
+        Broadcast a packet to all rooms passed by options['rooms'], if no rooms, then broadcast to all
+        :param packet:
+        :param options:
+        :return:
+        """
+        rooms = options.get('rooms', [])
+
+        # TODO what if exceptions list is long, should we use set
+        exceptions = options.get('except', [])
+
+        # ids set used to track which socket already send
         ids = set()
 
         packet['nsp'] = self.namespace.name
+
+        # Encode once for all sockets
         encoded = parser.Encoder.encode(packet)
 
-        if rooms:
+        if len(rooms) > 0:
             for room in rooms:
                 if room not in self.rooms:
                     continue

@@ -1,14 +1,15 @@
 # coding=utf-8
-from datetime import datetime
-from pyee import EventEmitter
-from socketio import has_bin
-from socketio import parser
+from __future__ import absolute_import
+from .event_emitter import EventEmitter
+from . import has_bin
+import parser
 import logging
 
 logger = logging.getLogger(__name__)
 
 __all__ = ['Socket', 'events', 'flags']
 
+# these events are preserved for internal usage, socket can't emit these to clients
 events = [
     'error',
     'connect',
@@ -19,8 +20,8 @@ events = [
 
 flags = [
     'json',
-    'volatile',
-    'broadcast'
+    'volatile',  # volatile flag indicates that the upcoming packets are not important, can be lost in some cases
+    'broadcast',  # broadcast flag indicates that the upcoming packet should be broadcast to all sockets in the namespace
 ]
 
 
@@ -39,8 +40,8 @@ class Socket(EventEmitter):
         self.client = client
         self.engine_socket = client.engine_socket
         self.rooms = []
-        self.rooms_send_to = None
-        self.flags = {}
+        self.rooms_send_to = []
+        self.flags = set()
         self.acks = {}
         self.connected = True
         self.disconnected = False
@@ -59,7 +60,7 @@ class Socket(EventEmitter):
 
             # TODO ADD ack callback
 
-            if self.rooms_send_to or 'broadcast' in self.flags:
+            if len(self.rooms_send_to) > 0 or 'broadcast' in self.flags:
                 self.adapter.broadcast(packet, {
                     'except': [self.id],
                     'rooms': self.rooms_send_to,
@@ -68,12 +69,10 @@ class Socket(EventEmitter):
             else:
                 self.packet(packet)
 
-        self.rooms_send_to = None
+        self.rooms_send_to = []
         self.flags = {}
 
     def to(self, name):
-        self.rooms_send_to = self.rooms_send_to or []
-
         if name not in self.rooms_send_to:
             self.rooms_send_to.append(name)
 
@@ -213,3 +212,8 @@ class Socket(EventEmitter):
     @property
     def context(self):
         return self.engine_socket.context
+
+    def flag(self, flag):
+        self.flags.add(flag)
+        return self
+

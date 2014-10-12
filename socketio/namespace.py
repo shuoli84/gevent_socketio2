@@ -1,13 +1,12 @@
 # coding=utf-8
 from __future__ import absolute_import
-from functools import partial
 import logging
 from pyee import EventEmitter
-from socketio import has_bin
-from socketio.adapter import Adapter
-from socketio.socket import Socket
-from socketio.engine.socket import Socket as EngineSocket
-import socketio.parser as SocketIOParser
+from . import has_bin
+from .adapter import Adapter
+from .socket import Socket
+from .engine.socket import Socket as EngineSocket
+from . import parser as SocketIOParser
 
 logger = logging.getLogger(__name__)
 
@@ -23,7 +22,7 @@ class Namespace(EventEmitter):
         self.ids = 0
         self.acks = {}
         self.rooms = {}
-        self.rooms_send_to = None
+        self.rooms_send_to = []
         self.jobs = []
         self.adapter = Adapter(self)
 
@@ -74,7 +73,7 @@ class Namespace(EventEmitter):
             self.adapter.broadcast(packet, {
                 'rooms': self.rooms,
             })
-            self.rooms = None
+            self.rooms = {}
 
         return self
 

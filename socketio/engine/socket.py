@@ -227,7 +227,7 @@ class Socket(EventEmitter):
 
             self._clear_transport()
             self.ready_state = self.STATE_CLOSED
-            self.emit("close", *args, **kwargs)
+            self.emit("close", "received close message", *args, **kwargs)
             self.write_buffer = None
 
     def maybe_upgrade(self, transport):

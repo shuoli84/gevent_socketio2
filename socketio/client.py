@@ -3,7 +3,7 @@
 Client represents one client, which holds several socketio sockets, and one engineio socket.
 """
 from pyee import EventEmitter
-import socketio.parser as Parser
+import parser as Parser
 import logging
 from engine.socket import Socket as EngineSocket
 

@@ -1,5 +1,4 @@
-from functools import partial
-from socketio.server import SocketIOServer
+from .server import SocketIOServer
 import logging
 
 logger = logging.getLogger(__name__)

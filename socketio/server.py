@@ -1,7 +1,9 @@
+from __future__ import absolute_import
+
 import logging
-from socketio.client import Client
-from socketio.namespace import Namespace
-from engine.server import Server as EngineServer
+from .client import Client
+from .namespace import Namespace
+from .engine.server import Server as EngineServer
 
 __all__ = ['SocketIOServer']
 

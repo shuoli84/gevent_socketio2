@@ -2,10 +2,12 @@
 """
 Parser for socket io
 """
+
+from __future__ import absolute_import
 import json
 import logging
-from pyee import EventEmitter
-from socketio.binary import Binary
+from .event_emitter import EventEmitter
+from .binary import Binary
 
 logger = logging.getLogger(__name__)
 
