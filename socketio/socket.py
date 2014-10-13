@@ -2,7 +2,7 @@
 from __future__ import absolute_import
 from .event_emitter import EventEmitter
 from . import has_bin
-import parser
+from . import parser
 import logging
 
 logger = logging.getLogger(__name__)
@@ -58,8 +58,6 @@ class Socket(EventEmitter):
 
             packet['data'] = [event] + list(args)
 
-            # TODO ADD ack callback
-
             if len(self.rooms_send_to) > 0 or 'broadcast' in self.flags:
                 self.adapter.broadcast(packet, {
                     'except': [self.id],
@@ -70,7 +68,7 @@ class Socket(EventEmitter):
                 self.packet(packet)
 
         self.rooms_send_to = []
-        self.flags = {}
+        self.flags = set()
 
     def to(self, name):
         if name not in self.rooms_send_to:
@@ -85,7 +83,8 @@ class Socket(EventEmitter):
     write = send
 
     def packet(self, p, pre_encoded=False):
-        p['nsp'] = self.namespace.name
+        if type(p) is dict:
+            p['nsp'] = self.namespace.name
         self.client.packet(p, pre_encoded)
 
     def join(self, room, callback=None):
