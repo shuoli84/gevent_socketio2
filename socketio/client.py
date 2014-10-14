@@ -1,7 +1,4 @@
 # coding=utf-8
-"""
-Client represents one client, which holds several socketio sockets, and one engineio socket.
-"""
 from pyee import EventEmitter
 import parser as Parser
 import logging
@@ -11,6 +8,9 @@ logger = logging.getLogger(__name__)
 
 
 class Client(EventEmitter):
+    """
+    Client represents one client, which holds several socketio sockets, and one engineio socket.
+    """
     def __init__(self, server, engine_socket):
         super(Client, self).__init__()
 
@@ -70,12 +70,20 @@ class Client(EventEmitter):
         namespace.add(self, callback)
 
     def disconnect(self):
+        """
+        Disconnect the client
+        """
         while self.sockets:
             socket = self.sockets.pop(0)
             socket.disconnect()
         self.close()
 
     def remove(self, socket):
+        """
+        Remove the socket from client
+        :param socket:
+        :return:
+        """
         try:
             index = self.sockets.index(socket)
             nsp = socket.namespace.name
@@ -85,12 +93,22 @@ class Client(EventEmitter):
             logger.debug('ignoring remove for %s', socket.id)
 
     def close(self):
+        """
+        Close the client
+        :return:
+        """
         if self.engine_socket.ready_state == EngineSocket.STATE_OPEN:
             logger.debug('forcing transport close')
             self.engine_socket.close()
             self.on_close('forced server close')
 
     def packet(self, packet, pre_encoded=False):
+        """
+        Send out a packet
+        :param packet: The packet
+        :param pre_encoded: Whether the packet is pre encoded.
+        :return:
+        """
         if self.engine_socket.ready_state == EngineSocket.STATE_OPEN:
             logger.debug('writing packet %s', str(packet))
 

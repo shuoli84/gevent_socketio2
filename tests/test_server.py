@@ -1,41 +1,17 @@
 from gevent.monkey import patch_all
 patch_all()
 
+from tests.engine.base_server_test import SocketIOServerBaseTest
 import json
-from unittest import TestCase
 import gevent
 
 import requests
 from socketio.server import serve, SocketIOServer
 from socketio.engine.parser import Parser as EngineParser
-import socketio.parser as SocketIoParser
+import socketio.parser as SocketIOParser
 
 
-def application(environ, start_response):
-    body = 'ok'
-    headers = [('Content-Type', 'text/html; charset=utf8'),
-               ('Content-Length', str(len(body)))]
-    start_response('200 OK', headers)
-    return [body]
-
-
-class ServerTest(TestCase):
-    def __init__(self, *args, **kwarg):
-
-        self.host = '127.0.0.1'
-        self.port = 3030
-        self.root_url = 'http://%(host)s:%(port)d/socket.io/' % {
-            'host': self.host,
-            'port': self.port
-        }
-        super(ServerTest, self).__init__(*args, **kwarg)
-
-    def setUp(self):
-        self.job = gevent.spawn(serve, application, host=self.host, port=self.port)
-
-    def tearDown(self):
-        gevent.kill(self.job)
-
+class ServerTest(SocketIOServerBaseTest):
     def test_server(self):
         gevent.sleep(0.5)
         result = {'socket': None}
@@ -61,8 +37,8 @@ class ServerTest(TestCase):
         self.assertIsNotNone(sid)
         self.assertIsNotNone(result['socket'])
 
-        socket_encoded = SocketIoParser.Encoder.encode({
-            'type': SocketIoParser.EVENT,
+        socket_encoded = SocketIOParser.Encoder.encode({
+            'type': SocketIOParser.EVENT,
             'data': ['message', 'hello']
         })
 

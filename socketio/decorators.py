@@ -9,6 +9,7 @@ class namespace(object):
         self.name = name
 
     def __call__(self, handler):
+        # Get all methods with pattern on_ from the handler
         methods = [method for method in dir(handler) if callable(getattr(handler, method)) and method.startswith('on_')]
         if SocketIOServer.global_server is None:
             logger.warning('namespace decorator called but SocketIOServer not initialised')
