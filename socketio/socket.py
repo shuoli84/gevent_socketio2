@@ -47,6 +47,14 @@ class Socket(EventEmitter):
         self.disconnected = False
 
     def emit(self, event, *args):
+        """
+        the interface for both sending messages and normal event notification
+        If the event is predefined events, then emit the event to listeners, otherwise
+        send it out as packet
+        :param event: Event name
+        :param args: The list of data for the event. emit('message', 'hello') or emit('message', {'content':'wonderful'})
+        :return: None
+        """
         if event in events:
             super(Socket, self).emit(event, *args)
 
@@ -71,12 +79,18 @@ class Socket(EventEmitter):
         self.flags = set()
 
     def to(self, name):
+        """
+        Mark that the next event should send to which room
+        :param name: The name of the room
+        :return: self. Easier for chaining. socket.to('chat').emit('message', 'hello chat')
+        """
         if name not in self.rooms_send_to:
             self.rooms_send_to.append(name)
 
         return self
 
     def send(self, *args):
+
         self.emit('message', *args)
         return self
 
