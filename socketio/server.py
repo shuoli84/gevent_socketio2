@@ -77,10 +77,6 @@ class SocketIOWSGIServer(WSGIServer):
         handler.on('connection', SocketIOServer.default_server.on_connection)
         handler.handle()
 
-    def close(self):
-        SocketIOServer.default_server.close()
-        super(SocketIOWSGIServer, self).close()
-
 
 def serve(app, **kw):
     host = kw.pop('host', '127.0.0.1')
