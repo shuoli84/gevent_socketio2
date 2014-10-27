@@ -23,12 +23,14 @@ class EngineHandler(WSGIHandler, EventEmitter):
     """
     transports = ('polling', 'websocket')
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, server_context, *args, **kwargs):
         super(EngineHandler, self).__init__(*args, **kwargs)
         EventEmitter.__init__(self)
 
-        if self.server.transports:
-            self.transports = self.server.transports
+        self.server_context = server_context
+
+        if self.server_context.transports:
+            self.transports = self.server_context.transports
 
     def handle_one_response(self):
         """
@@ -41,7 +43,7 @@ class EngineHandler(WSGIHandler, EventEmitter):
         """
         path = self.environ.get('PATH_INFO')
 
-        if not path.lstrip('/').startswith(self.server.resource + '/'):
+        if not path.lstrip('/').startswith(self.server_context.resource + '/'):
             return super(EngineHandler, self).handle_one_response()
 
         # Create a request and a response
@@ -54,13 +56,13 @@ class EngineHandler(WSGIHandler, EventEmitter):
         sid = request.GET.get("sid", None)
         b64 = request.GET.get("b64", False)
 
-        socket = self.server.engine_sockets.get(sid, None)
+        socket = self.server_context.engine_sockets.get(sid, None)
 
         if socket is None:
             socket = self._do_handshake(b64=b64, request=request)
         elif 'Upgrade' in request.headers:
             # This is the ws upgrade request, here we handles the upgrade
-            ws_handler = self.server.ws_handler_class(self.socket, self.client_address, self.server)
+            ws_handler = self.server_context.ws_handler_class(self.socket, self.client_address, self.server)
             ws_handler.__dict__.update(self.__dict__)
             ws_handler.prevent_wsgi_call = True
             ws_handler.handle_one_response()
@@ -107,10 +109,10 @@ class EngineHandler(WSGIHandler, EventEmitter):
 
         socket = Socket(request)
 
-        self.server.engine_sockets[socket.id] = socket
+        self.server_context.engine_sockets[socket.id] = socket
 
         def remove_socket(*args, **kwargs):
-            self.server.engine_sockets.pop(socket.id)
+            self.server_context.engine_sockets.pop(socket.id)
         socket.on('close', remove_socket)
 
         request.response.headers['Set-Cookie'] = 'io=%s' % socket.id

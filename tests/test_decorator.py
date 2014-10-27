@@ -24,8 +24,8 @@ EngineSocket = namedtuple('EngineSocket', ['ready_state'])
 class DjangoTestCase(TestCase):
 
     def test_namespace_decorator(self):
-        s = SocketIOServer(listener=8000, application=application)
-        ns = s.of('/chat')
+        SocketIOServer.default_server = SocketIOServer(listener=8000, application=application)
+        ns = SocketIOServer.default_server.of('/chat')
 
         m = {}
 

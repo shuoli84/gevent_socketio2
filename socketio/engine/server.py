@@ -4,13 +4,14 @@ from gevent.pywsgi import WSGIServer
 from geventwebsocket.handler import WebSocketHandler
 from .handler import EngineHandler
 import logging
+from socketio.event_emitter import EventEmitter
 
 __all__ = ['Server']
 
 logger = logging.getLogger(__name__)
 
 
-class Server(WSGIServer):
+class Server(object):
     """
     EngineIO Server holds all opened sockets
     """
@@ -24,17 +25,7 @@ class Server(WSGIServer):
 
     def __init__(self, *args, **kwargs):
         self.transports = kwargs.pop('transports', None)
-        self.resource = kwargs.pop('resource', 'socketio')
-
-        super(Server, self).__init__(*args, **kwargs)
-
-    def handle(self, socket, address):
-        """
-        Create a EngineHandler.
-        """
-        handler = EngineHandler(socket, address, self)
-        handler.on('connection', self.on_connection)
-        handler.handle()
+        self.resource = kwargs.pop('resource', 'socket.io')
 
     def on_connection(self, engine_socket):
         """

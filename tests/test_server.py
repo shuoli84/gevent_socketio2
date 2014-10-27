@@ -24,7 +24,7 @@ class ServerTest(SocketIOServerBaseTest):
 
             socket.on('message', onevent)
 
-        SocketIOServer.global_server.namespaces['/'].on('connection', message)
+        SocketIOServer.default_server.namespaces['/'].on('connection', message)
 
         response = requests.get(self.root_url + '?transport=polling')
 

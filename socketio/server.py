@@ -1,9 +1,11 @@
 from __future__ import absolute_import
 
 import logging
+from gevent.pywsgi import WSGIServer
 from .client import Client
 from .namespace import Namespace
 from .engine.server import Server as EngineServer
+from .engine.handler import EngineHandler
 
 __all__ = ['SocketIOServer']
 
@@ -15,8 +17,7 @@ class SocketIOServer(EngineServer):
     SocketIOServer holds all server level resources. And it inherit from EngineIO, which handles all incoming connection
     """
 
-    # TODO FIX THIS, now use a class level instance to store a ref to server instance
-    global_server = None
+    default_server = None
 
     def __init__(self, *args, **kwargs):
         """
@@ -27,7 +28,6 @@ class SocketIOServer(EngineServer):
         """
         self.namespaces = {}
         self.root_namespace = self.of('/')
-        SocketIOServer.global_server = self
         super(SocketIOServer, self).__init__(*args, **kwargs)
 
     def of(self, name):
@@ -57,8 +57,6 @@ class SocketIOServer(EngineServer):
             for socket in self.namespaces['/'].sockets:
                 socket.on_close(reason='the server closed')
 
-        super(SocketIOServer, self).close()
-
     def on_connection(self, engine_socket):
         """
         Called when a new underlying socket connected. It creates a client object and connect it to root namespace
@@ -70,20 +68,27 @@ class SocketIOServer(EngineServer):
         client.connect('/')
 
 
+SocketIOServer.default_server = SocketIOServer()
+
+
+class SocketIOWSGIServer(WSGIServer):
+    def handle(self, socket, address):
+        handler = EngineHandler(SocketIOServer.default_server, socket, address, self)
+        handler.on('connection', SocketIOServer.default_server.on_connection)
+        handler.handle()
+
+    def close(self):
+        SocketIOServer.default_server.close()
+        super(SocketIOWSGIServer, self).close()
+
+
 def serve(app, **kw):
-    resource = 'socket.io'
     host = kw.pop('host', '127.0.0.1')
     port = int(kw.pop('port', 6543))
 
-    transports = kw.pop('transports', None)
-    if transports:
-        transports = [x.strip() for x in transports.split(',')]
-
-    server = SocketIOServer((host, port),
-                            app,
-                            resource=resource,
-                            transports=transports,
-                            **kw)
+    server = SocketIOWSGIServer((host, port),
+                                app,
+                                **kw)
 
     print('serving on http://%s:%s' % (host, port))
     server.serve_forever()
