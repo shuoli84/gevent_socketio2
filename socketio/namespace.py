@@ -69,7 +69,8 @@ class Namespace(EventEmitter):
             if has_bin(args):
                 _type = SocketIOParser.BINARY_EVENT
 
-            packet = {'type': _type, 'data': args}
+            packet = {'type': _type, 'data': [event] + list(args)}
+
             self.adapter.broadcast(packet, {
                 'rooms': self.rooms,
             })
