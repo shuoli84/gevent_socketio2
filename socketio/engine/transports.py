@@ -236,6 +236,9 @@ class PollingTransport(BaseTransport):
             logger.debug('transport not writable - buffering orderly close')
             self.should_close = True
 
+    def poll(self):
+        return self.request()
+
 
 class XHRPollingTransport(PollingTransport):
 
