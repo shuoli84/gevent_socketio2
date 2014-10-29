@@ -23,6 +23,8 @@ class Server(object):
     }
     engine_sockets = {}
 
+    default_server = None
+
     def __init__(self, *args, **kwargs):
         self.transports = kwargs.pop('transports', None)
         self.resource = kwargs.pop('resource', 'socket.io')
@@ -34,3 +36,23 @@ class Server(object):
         :return: None
         """
         raise NotImplementedError()
+
+Server.default_server = Server(transports=("polling", "websocket"))
+
+
+class EngineIOWSGIServer(WSGIServer):
+    def handle(self, socket, address):
+        handler = EngineHandler(Server.default_server, socket, address, self)
+        handler.handle()
+
+
+def serve(app, **kw):
+    host = kw.pop('host', '127.0.0.1')
+    port = int(kw.pop('port', 6543))
+
+    server = EngineIOWSGIServer((host, port),
+                                app,
+                                **kw)
+
+    print('serving on http://%s:%s' % (host, port))
+    server.serve_forever()

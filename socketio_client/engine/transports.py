@@ -128,6 +128,13 @@ class PollingTransport(Transport):
     def do_poll(self):
         raise NotImplementedError()
 
+    def do_open(self):
+        """
+        All polling transport needs do a poll to get handshake packet back
+        :return:
+        """
+        self.poll()
+
     def on_data(self, data):
         logger.debug("polling got data %s", data)
 
@@ -217,8 +224,8 @@ class XHRPollingTransport(PollingTransport):
         response = self.request(method='POST', data=data)
 
         if 300 > response.status_code >= 200:
-            self.on_load(response)
-        elif response.status_code >= 400:
+            return
+        else:
             self.on_error('xhr request failed', response.content)
 
     def do_poll(self):
@@ -252,7 +259,7 @@ class XHRPollingTransport(PollingTransport):
             request_func = requests.post
 
         uri = self.uri()
-        return request_func(uri, data=data, headers={"Content_Type": content_type})
+        return request_func(uri, data=data, headers={"content-type": content_type})
 
     def on_load(self, response):
         content_type = response.headers["content-type"]
@@ -265,7 +272,3 @@ class XHRPollingTransport(PollingTransport):
                 data = 'ok'
 
         self.on_data(data)
-
-    def do_open(self):
-        # Do nothing
-        pass

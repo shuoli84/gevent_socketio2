@@ -175,7 +175,7 @@ class PollingTransport(BaseTransport):
         :param request:
         :return:
         """
-        is_binary = 'application/octet-stream' == request.headers.get('content-type', 'None')
+        is_binary = 'application/octet-stream' == request.headers.get('content-type', None)
         self.data_request = request
         self.data_request.response.on('post_end', self._cleanup_data)
 

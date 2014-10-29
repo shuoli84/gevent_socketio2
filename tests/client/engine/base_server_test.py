@@ -1,10 +1,10 @@
 from unittest import TestCase
 import gevent
-from socketio.server import serve
+from socketio.engine.server import serve
 from tests import application
 
 
-class SocketIOServerBaseTest(TestCase):
+class EngineIOServerBaseTest(TestCase):
     def __init__(self, *args, **kwarg):
         self.host = '127.0.0.1'
         self.port = 3030
@@ -12,7 +12,7 @@ class SocketIOServerBaseTest(TestCase):
             'host': self.host,
             'port': self.port
         }
-        super(SocketIOServerBaseTest, self).__init__(*args, **kwarg)
+        super(EngineIOServerBaseTest, self).__init__(*args, **kwarg)
 
     def setUp(self):
         self.job = gevent.spawn(serve, application, host=self.host, port=self.port)

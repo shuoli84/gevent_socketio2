@@ -1,8 +1,8 @@
-import json
 import gevent
 from gevent.monkey import patch_all
 patch_all()
 
+import json
 from socketio_client.engine.transports import XHRPollingTransport
 from tests.engine.base_server_test import SocketIOServerBaseTest
 
@@ -18,9 +18,10 @@ class PollingTest(SocketIOServerBaseTest):
             context['packet'] = packet
 
         transport.on('packet', on_packet)
-        transport.poll()
-
+        job = gevent.spawn(transport.poll)
+        gevent.sleep(.5)
         self.assertIsNotNone(context['packet'])
+        gevent.kill(job)
 
     def test_b64_polling(self):
         transport = XHRPollingTransport(host="127.0.0.1", port=self.port, path="/socket.io/", force_base64=True)
@@ -34,8 +35,7 @@ class PollingTest(SocketIOServerBaseTest):
             transport.remove_listener('packet', on_packet)
 
         transport.on('packet', on_packet)
-        transport.open()
-        job = gevent.spawn(transport.poll)
-        gevent.sleep(0.5)
+        job = gevent.spawn(transport.open)
+        gevent.sleep(0.2)
         self.assertIsNotNone(context['packet'])
         gevent.kill(job)
