@@ -202,9 +202,8 @@ class PollingTransport(Transport):
 
 class XHRPollingTransport(PollingTransport):
     def __init__(self, *args, **kwargs):
-        super(XHRPollingTransport, self).__init__(force_base64=False, **kwargs)
+        super(XHRPollingTransport, self).__init__(**kwargs)
 
-        self.supports_binary = True
         self.data_response = None
         self.poll_response = None
 

@@ -107,7 +107,7 @@ class EngineHandler(WSGIHandler, EventEmitter):
         if transport_name not in self.transports:
             raise ValueError("transport name [%s] not supported" % transport_name)
 
-        socket = Socket(request)
+        socket = Socket(request, supports_binary=not bool(b64))
 
         self.server_context.engine_sockets[socket.id] = socket
 

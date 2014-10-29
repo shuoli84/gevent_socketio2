@@ -21,3 +21,16 @@ class PollingTest(SocketIOServerBaseTest):
         # We should has the handshake packet back
         self.assertIsNotNone(context['packet'])
 
+    def test_b64_polling(self):
+        transport = XHRPollingTransport(host="127.0.0.1", port=self.port, path="/socket.io/", force_base64=True)
+
+        context = {}
+
+        def on_packet(packet):
+            context['packet'] = packet
+
+        transport.on('packet', on_packet)
+        transport.poll()
+
+        # We should has the handshake packet back
+        self.assertIsNotNone(context['packet'])

@@ -135,7 +135,7 @@ class Parser(object):
             encoded = Parser.encode_packet(packet, supports_binary)
             out_buffer += '{0}:{1}'.format(str(len(encoded)), encoded)
 
-        return out_buffer
+        return str(out_buffer)
 
     @staticmethod
     def decode_payload(data):
@@ -150,8 +150,10 @@ class Parser(object):
             length_str = ''
             total_length = len(data)
 
-            for i in xrange(0, len(data)):
+            i = 0
+            while i < total_length:
                 ch = data[i]
+                i += 1
                 if ch != ':':
                     length_str += ch
                 else:
@@ -159,7 +161,7 @@ class Parser(object):
                         yield (Parser.error_packet, 0, 1)
 
                     length = int(length_str)
-                    message = data[i+1: i+1+length]
+                    message = data[i: i+length]
 
                     if len(message) != length:
                         yield (Parser.error_packet, 0, 1)
@@ -168,6 +170,7 @@ class Parser(object):
                         packet = Parser.decode_packet(message)
                         yield (packet, i + length, total_length)
 
+                    i += length
                     length_str = ''
 
             if length_str != '':
