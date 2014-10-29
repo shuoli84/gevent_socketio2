@@ -290,7 +290,6 @@ class WebsocketTransport(Transport):
         url = self.uri()
         self.websocket = WebSocketClient(url)
         self.websocket.connect()
-        print self.websocket.sock
         self.on_open()
         self.read_job = gevent.spawn(self._read)
 

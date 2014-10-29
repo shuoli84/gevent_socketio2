@@ -46,5 +46,5 @@ class PollingTest(EngineIOServerBaseTest):
         transport.open()
         transport.send([{
             'type': 'message',
-            'data': 'hwhwhw'
+            'data': 'hello world'
             }])
