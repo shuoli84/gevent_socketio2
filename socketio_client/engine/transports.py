@@ -142,6 +142,9 @@ class PollingTransport(Transport):
             # bypass and handle the message
             self.on_packet(packet)
 
+        if 'open' == self.ready_state and self.sid is None:
+            raise ValueError("sid is none after on_open, forgot setting sid in engine_socket?")
+
         if 'closed' != self.ready_state:
             self.polling = False
             self.emit("poll_complete")
@@ -185,6 +188,9 @@ class PollingTransport(Transport):
             'transport': self.name,
             't': time.mktime(datetime.datetime.now().timetuple()) * 1000
         }
+
+        if self.sid is not None:
+            query['sid'] = self.sid
 
         if not self.supports_binary and self.sid is None:
             query["b64"] = 1
@@ -259,3 +265,7 @@ class XHRPollingTransport(PollingTransport):
                 data = 'ok'
 
         self.on_data(data)
+
+    def do_open(self):
+        # Do nothing
+        pass
