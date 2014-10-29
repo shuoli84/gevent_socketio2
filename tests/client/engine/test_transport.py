@@ -1,13 +1,14 @@
 import gevent
 from gevent.monkey import patch_all
+
 patch_all()
 
 import json
-from socketio_client.engine.transports import XHRPollingTransport
-from tests.engine.base_server_test import SocketIOServerBaseTest
+from socketio_client.engine.transports import XHRPollingTransport, WebsocketTransport
+from tests.client.engine.base_server_test import EngineIOServerBaseTest
 
 
-class PollingTest(SocketIOServerBaseTest):
+class PollingTest(EngineIOServerBaseTest):
 
     def test_polling(self):
         transport = XHRPollingTransport(host="127.0.0.1", port=self.port, path="/socket.io/")
@@ -39,3 +40,11 @@ class PollingTest(SocketIOServerBaseTest):
         gevent.sleep(0.2)
         self.assertIsNotNone(context['packet'])
         gevent.kill(job)
+
+    def test_websocket(self):
+        transport = WebsocketTransport(host="127.0.0.1", port=self.port, path="/socket.io/")
+        transport.open()
+        transport.send([{
+            'type': 'message',
+            'data': 'hwhwhw'
+            }])

@@ -148,7 +148,6 @@ class Decoder(EventEmitter):
         i = 0
 
         # look up type
-        print string
         _type = int(string[0])
         p['type'] = _type
 

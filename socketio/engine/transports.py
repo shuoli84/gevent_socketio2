@@ -321,6 +321,7 @@ class WebsocketTransport(BaseTransport):
         self.request = request
         if hasattr(request, 'websocket'):
             self.websocket = request.websocket
+            self.writable = True
 
             def read_from_ws():
                 while True:

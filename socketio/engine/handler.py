@@ -32,6 +32,17 @@ class EngineHandler(WSGIHandler, EventEmitter):
         if self.server_context.transports:
             self.transports = self.server_context.transports
 
+    def bind_framework_info(self, socket):
+        # Run framework's wsgi application to hook up framework specific info eg. request
+        # This is why we define /socket.io url in web frameworks and points them to a view
+        self.environ['engine_socket'] = socket
+        try:
+            print "THIS IS WHAT INTERESTING THINGS"
+            start_response = lambda status, headers, exc=None: None
+            self.application(self.environ, start_response)
+        except:
+            self.handle_error(*sys.exc_info())
+
     def handle_one_response(self):
         """
         There are 3 situations we get a new request:
@@ -53,14 +64,9 @@ class EngineHandler(WSGIHandler, EventEmitter):
         setattr(request, 'handler', self)
         setattr(request, 'response', Response())
 
-        sid = request.GET.get("sid", None)
-        b64 = request.GET.get("b64", False)
-
-        socket = self.server_context.engine_sockets.get(sid, None)
-
-        if socket is None:
-            socket = self._do_handshake(b64=b64, request=request)
-        elif 'Upgrade' in request.headers:
+        # Upgrade the websocket if needed
+        is_websocket = False
+        if 'Upgrade' in request.headers:
             # This is the ws upgrade request, here we handles the upgrade
             ws_handler = self.server_context.ws_handler_class(self.socket, self.client_address, self.server)
             ws_handler.__dict__.update(self.__dict__)
@@ -68,22 +74,33 @@ class EngineHandler(WSGIHandler, EventEmitter):
             ws_handler.handle_one_response()
             # Suppose here we have an websocket connection
             setattr(request, 'websocket', ws_handler.websocket)
-            ws_transport = WebsocketTransport(self, {})
-            ws_transport.process_request(request)
-            socket.maybe_upgrade(ws_transport)
-        else:
+
+            is_websocket = True
+
+        sid = request.GET.get("sid", None)
+        b64 = request.GET.get("b64", False)
+
+        socket = self.server_context.engine_sockets.get(sid, None)
+
+        # FIXME CHECK WHETHER WE NEED THIS?
+        if socket and not is_websocket:
             # We spawn a new gevent here, let socket do its own business.
             # In current event loop, we will wait on request.response, which is set in socket.set_request
             gevent.spawn(socket.process_request, request)
+            self.bind_framework_info(socket)
 
-        # Run framework's wsgi application to hook up framework specific info eg. request
-        # This is why we define /socket.io url in web frameworks and points them to a view
-        self.environ['engine_socket'] = socket
-        try:
-            start_response = lambda status, headers, exc=None: None
-            self.application(self.environ, start_response)
-        except:
-            self.handle_error(*sys.exc_info())
+        else:
+            if socket is None:
+                socket = self._do_handshake(b64=b64, request=request)
+
+                if not is_websocket:
+                    self.bind_framework_info(socket)
+
+            if is_websocket and socket.transport.name != 'websocket':
+                # Here we have a upgrade
+                ws_transport = WebsocketTransport(self, {})
+                ws_transport.process_request(request)
+                socket.maybe_upgrade(ws_transport)
 
         # wait till the response ends
         request.response.join()
@@ -116,7 +133,9 @@ class EngineHandler(WSGIHandler, EventEmitter):
         socket.on('close', remove_socket)
 
         request.response.headers['Set-Cookie'] = 'io=%s' % socket.id
+
         socket.open()
 
         self.emit('connection', socket)
+
         return socket

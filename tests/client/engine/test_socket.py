@@ -37,9 +37,11 @@ class SocketTest(EngineIOServerBaseTest):
             context['message'] = message
 
         engine_socket.on("message", on_message)
-        socket.send('what the')
+        message = 'test message'
+        socket.send(message)
 
         gevent.sleep(0.1)
 
         self.assertTrue('message' in context)
+        self.assertEqual(message, context['message'])
         gevent.kill(job)

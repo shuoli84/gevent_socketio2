@@ -100,6 +100,7 @@ class Socket(EventEmitter):
     STATE_CLOSING = "CLOSING"
     STATE_CLOSED = "CLOSED"
 
+
     def __init__(self, request, supports_binary=True, ping_interval=5000, ping_timeout=10000, upgrade_timeout=30):
         super(Socket, self).__init__()
 
@@ -127,19 +128,23 @@ class Socket(EventEmitter):
 
         transport_name = request.GET.get("transport", None)
 
+        transport = self._create_transport(request, supports_binary, transport_name)
+
+        self._set_transport(transport)
+        self.process_request(request)
+
+    def _create_transport(self, request, supports_binary, transport_name):
         if transport_name not in handler_types:
             raise Exception('transport name not in query string')
-
         handler_class = handler_types[transport_name]
         if issubclass(handler_class, transports.BaseTransport):
             transport = handler_class(request.handler, {
                 "supports_binary": supports_binary
             })
-            self._set_transport(transport)
         else:
             raise Exception('Not able to construct transport class')
+        return transport
 
-        self.process_request(request)
 
     def _set_transport(self, transport):
         self.transport = transport

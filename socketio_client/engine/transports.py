@@ -2,10 +2,13 @@ import time
 import datetime
 import urllib
 import urlparse
+import gevent
 import requests
+from ws4py.messaging import TextMessage
 from socketio.engine import parser
 from socketio.event_emitter import EventEmitter
 import logging
+from ws4py.client.geventclient import WebSocketClient
 
 logger = logging.getLogger(__name__)
 
@@ -16,7 +19,7 @@ class Transport(EventEmitter):
 
     def __init__(self, path, host, port,
                  secure=False, query=None, agent=None,
-                 support_xdr=True):
+                 force_base64=False, support_xdr=True):
         self.path = path
         self.hostname = host
         self.port = port
@@ -25,6 +28,9 @@ class Transport(EventEmitter):
         self.ready_state = None
         self.agent = agent
         self.writable = False
+        self.force_base64 = force_base64
+        self.supports_binary = not self.force_base64
+
         super(Transport, self).__init__()
 
     def on_error(self, msg, desc):
@@ -76,9 +82,7 @@ class Transport(EventEmitter):
 class PollingTransport(Transport):
     name = "polling"
 
-    def __init__(self, force_base64=False, *args, **kwargs):
-        self.force_base64 = force_base64
-        self.supports_binary = not self.force_base64
+    def __init__(self, *args, **kwargs):
         self.polling = False
         self.sid = None
         super(PollingTransport, self).__init__(*args, **kwargs)
@@ -272,3 +276,73 @@ class XHRPollingTransport(PollingTransport):
                 data = 'ok'
 
         self.on_data(data)
+
+
+class WebsocketTransport(Transport):
+    name = 'websocket'
+
+    def __init__(self, *args, **kwargs):
+        super(WebsocketTransport, self).__init__(*args, **kwargs)
+        self.websocket = None
+        self.read_job = None
+
+    def do_open(self):
+        url = self.uri()
+        self.websocket = WebSocketClient(url)
+        self.websocket.connect()
+        print self.websocket.sock
+        self.on_open()
+        self.read_job = gevent.spawn(self._read)
+
+    def _read(self):
+        while True:
+            msg = self.websocket.receive()
+            if msg is not None:
+                if msg.is_text:
+                    self.on_data(str(msg))
+                else:
+                    self.on_data(msg.data)
+            else:
+                break
+
+    def write(self, packets):
+        self.writable = False
+
+        for packet in packets:
+            encoded_packet = parser.Parser.encode_packet(packet, self.supports_binary)
+            try:
+                self.websocket.send(encoded_packet)
+            except RuntimeError, e:
+                self.on_error('The websocket clsoed without a close packet (%s)', e)
+        self.on_drain()
+
+    def on_drain(self):
+        self.writable = True
+        self.emit('drain')
+
+
+        self.writable = True
+
+    def uri(self):
+        schema = 'wss' if self.secure else 'ws'
+
+        port = ''
+        if self.port and ((
+            'wss' == schema and self.port != 433
+                          ) or (
+            'ws' == schema and self.port != 80
+        )):
+            port = ':' + str(self.port)
+
+        query = {
+            'EIO': self.protocol_version,
+            'transport': self.name,
+            't': time.mktime(datetime.datetime.now().timetuple()) * 1000
+        }
+
+        if not self.supports_binary:
+            query['b64'] = 1
+
+        query = '?' + urllib.urlencode(query)
+
+        return schema + '://' + self.hostname + port + '/' + self.path.lstrip('/') + query
