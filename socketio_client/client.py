@@ -71,7 +71,7 @@ class SocketIOClient(EventEmitter):
         def on_open():
             self.on_open()
             callback()
-        engine_socket.on('open', on_open)
+        engine_socket.on('open', on_open, id(self))
 
         def on_error(error):
             logger.debug('connect_error')
@@ -83,7 +83,7 @@ class SocketIOClient(EventEmitter):
 
             self.maybe_reconnect_on_open()
 
-        engine_socket.on('error', on_error)
+        engine_socket.on('error', on_error, id(self))
 
         if self.timeout is not None:
             timeout = self.timeout
@@ -101,8 +101,7 @@ class SocketIOClient(EventEmitter):
         engine_socket.open()
 
     def _clean_socket(self):
-        # FIXME figure out a new way to remove listeners created by this object
-        self.engine_socket.remove_listener('open')
+        self.engine_socket.remove_listeners_by_key(id(self))
 
     def on_open(self):
         logger.debug('open')
@@ -112,10 +111,10 @@ class SocketIOClient(EventEmitter):
         self.emit('open')
 
         engine_socket = self.engine_socket
-        engine_socket.on('data', self.on_data)
-        self.decoder.on('decoded', self.on_decoded)
-        engine_socket.on('error', self.on_error)
-        engine_socket.on('close', self.on_close)
+        engine_socket.on('data', self.on_data, id(self))
+        self.decoder.on('decoded', self.on_decoded, id(self))
+        engine_socket.on('error', self.on_error, id(self))
+        engine_socket.on('close', self.on_close, id(self))
 
     def on_data(self, data):
         self.decoder.add(data)
@@ -136,15 +135,14 @@ class SocketIOClient(EventEmitter):
         if nsp in self.nsps:
             return self.nsps[nsp]
 
-        socket = Socket(self, nsp)
+        socket = Socket(self, nsp, self.auto_connect)
         self.nsps[nsp] = socket
 
         def on_connect():
             if socket not in self.connected:
                 self.connected.add(socket)
 
-        socket.on('connect', on_connect)
-
+        socket.on('connect', on_connect, id(self))
         return socket
 
     def destroy(self, socket):
@@ -155,6 +153,7 @@ class SocketIOClient(EventEmitter):
         """
         if socket in self.connected:
             self.connected.pop(socket)
+            socket.remove_listeners_by_key(id(self))
 
         if len(self.connected) == 0:
             self.close()
@@ -171,6 +170,7 @@ class SocketIOClient(EventEmitter):
             gevent.kill(self.reconnect_job)
 
         self._clean_socket()
+        self.decoder.remove_listeners_by_key(id(self))
         self.decoder.destroy()
 
     def close(self):

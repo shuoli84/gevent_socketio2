@@ -165,26 +165,28 @@ class Decoder(EventEmitter):
             p['attachments'] = int(attachment)
 
         # look up namespace
-        if '/' == string[i+1]:
-            namespace = ''
+        if i+1 < len(string):
+            if '/' == string[i+1]:
+                namespace = ''
 
-            i += 1
-            while i < len(string):
-                c = string[i]
-
-                if ',' == c:
-                    break
-
-                namespace += c
                 i += 1
+                while i < len(string):
+                    c = string[i]
 
-            p['nsp'] = namespace
+                    if ',' == c:
+                        break
 
+                    namespace += c
+                    i += 1
+
+                p['nsp'] = namespace
+            else:
+                p['nsp'] = '/'
         else:
             p['nsp'] = '/'
 
         # look up id
-        if i + 1< len(string):
+        if i+1 < len(string):
             n = string[i+1]
             if n.isdigit():
                 _id = ''

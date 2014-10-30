@@ -7,8 +7,9 @@ class EventEmitter(object):
         Initializes the EE.
         """
         self._events = defaultdict(lambda: [])
+        self._keys = defaultdict(lambda: [])
 
-    def on(self, event, f=None):
+    def on(self, event, f=None, key=None):
         """
         Returns a function that takes an event listener callback
         """
@@ -18,6 +19,9 @@ class EventEmitter(object):
 
             # Add the necessary function
             self._events[event].append(f)
+
+            if key is not None:
+                self._keys[key].append((event, f))
 
         if f is None:
             return _on
@@ -33,7 +37,7 @@ class EventEmitter(object):
         for fxn in self._events[event]:
             fxn(*args, **kwargs)
 
-    def once(self, event, f=None):
+    def once(self, event, f=None, key=None):
         def _once(f):
             def g(*args, **kwargs):
                 f(*args, **kwargs)
@@ -41,9 +45,9 @@ class EventEmitter(object):
             return g
 
         if f is None:
-            return lambda f: self.on(event, _once(f))
+            return lambda f: self.on(event, _once(f), key)
         else:
-            self.on(event, _once(f))
+            self.on(event, _once(f), key)
 
     def remove_listener(self, event, function):
         """
@@ -60,3 +64,18 @@ class EventEmitter(object):
 
     def listeners(self, event):
         return self._events[event]
+
+    def remove_listeners_by_key(self, key, event=None):
+        """
+        Remove all listeners attached with key
+        :param key: The unique id. Normally id(sender)
+        :param event: The event name, None as remove all
+        """
+
+        # TODO Clean the _keys dict
+        events = event if event is not None else self._events.keys()
+
+        if key in self._keys:
+            for event, f in self._keys[key]:
+                if event in events:
+                    self.remove_listener(event, f)

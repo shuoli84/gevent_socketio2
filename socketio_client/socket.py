@@ -11,7 +11,7 @@ internal_events = {'connect', 'connect_error', 'connect_timeout', 'disconnect', 
 
 class Socket(EventEmitter):
 
-    def __init__(self, client, namespace, **kwargs):
+    def __init__(self, client, namespace, auto_connect=False, **kwargs):
         """
 
         :param client: Client
@@ -34,6 +34,10 @@ class Socket(EventEmitter):
         self.disconnected = True
 
         self.config = kwargs
+        self.auto_connect = auto_connect
+
+        if auto_connect:
+            self.open()
 
     def _set_engine_socket(self, io):
         """
@@ -136,6 +140,7 @@ class Socket(EventEmitter):
             self.send_buffer.append(packet)
 
     def packet(self, packet):
+        print 'setting nsp %s' % self.namespace
         packet['nsp'] = self.namespace
         self.client.packet(packet)
 
