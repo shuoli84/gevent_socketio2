@@ -14,6 +14,7 @@ class EngineIOServerBaseTest(TestCase):
             'host': self.host,
             'port': self.port
         }
+        self.jobs = []
         super(EngineIOServerBaseTest, self).__init__(*args, **kwarg)
 
     def setUp(self):
@@ -21,5 +22,9 @@ class EngineIOServerBaseTest(TestCase):
         logging.basicConfig(stream=sys.stderr)
 
     def tearDown(self):
-        gevent.kill(self.job)
+        print "Killing [%d] jobs" % len(self.jobs)
+        gevent.killall(self.jobs)
         gevent.sleep(.5)
+
+    def spawn(self, *args, **kwargs):
+        self.jobs.append(gevent.spawn(*args, **kwargs))

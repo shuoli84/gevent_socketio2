@@ -39,6 +39,13 @@ class PollingTest(EngineIOServerBaseTest):
         job = gevent.spawn(transport.open)
         gevent.sleep(0.2)
         self.assertIsNotNone(context['packet'])
+
+        transport.pause(nowait=True)
+        # The transport state should be 'pausing', but since it is still polling, the state not able to reach
+        # paused
+
+        self.assertEqual('pausing', transport.ready_state)
+
         gevent.kill(job)
 
     def test_websocket(self):

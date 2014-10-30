@@ -3,6 +3,7 @@ import datetime
 import urllib
 import urlparse
 import gevent
+from gevent.event import Event
 import requests
 from ws4py.messaging import TextMessage
 from socketio.engine import parser
@@ -16,6 +17,7 @@ logger = logging.getLogger(__name__)
 class Transport(EventEmitter):
     timestamps = 0
     protocol_version = 3
+    name = '_base_transport'
 
     def __init__(self, path, host, port,
                  secure=False, query=None, agent=None,
@@ -30,6 +32,8 @@ class Transport(EventEmitter):
         self.writable = False
         self.force_base64 = force_base64
         self.supports_binary = not self.force_base64
+
+        self.sid = None
 
         super(Transport, self).__init__()
 
@@ -48,6 +52,8 @@ class Transport(EventEmitter):
 
     def send(self, packets):
         if 'open' == self.ready_state:
+            if type(packets) not in (list, tuple):
+                packets = [packets]
             self.write(packets)
 
         else:
@@ -87,19 +93,24 @@ class PollingTransport(Transport):
         self.sid = None
         super(PollingTransport, self).__init__(*args, **kwargs)
 
-    def pause(self, on_pause):
+    def pause(self, nowait=True, timeout=30):
         """
         Pause polling
-        :param on_pause: callback when transport paused
+        :param nowait: bool
         :return:
         """
         self.ready_state = 'pausing'
         context = {"total": 0}
 
+        if not nowait:
+            context['event'] = Event()
+
         def pause():
             logger.debug("paused")
             self.ready_state = 'paused'
-            on_pause()
+
+            if 'event' in context:
+                context['event'].set()
 
         if self.polling or not self.writable:
             context["total"] = 0
@@ -122,6 +133,13 @@ class PollingTransport(Transport):
                 self.once("drain", on_poll_complete)
         else:
             pause()
+
+        if not nowait:
+            paused = context['event'].wait(timeout=timeout)
+            if paused:
+                return
+            else:
+                raise RuntimeWarning("The pause timeout")
 
     def poll(self):
         logger.debug("polling")
@@ -336,8 +354,11 @@ class WebsocketTransport(Transport):
         query = {
             'EIO': self.protocol_version,
             'transport': self.name,
-            't': time.mktime(datetime.datetime.now().timetuple()) * 1000
+            't': time.mktime(datetime.datetime.now().timetuple()) * 1000,
         }
+
+        if self.sid:
+            query['sid'] = self.sid
 
         if not self.supports_binary:
             query['b64'] = 1
@@ -345,3 +366,8 @@ class WebsocketTransport(Transport):
         query = '?' + urllib.urlencode(query)
 
         return schema + '://' + self.hostname + port + '/' + self.path.lstrip('/') + query
+
+available_transports = {
+    XHRPollingTransport.name: XHRPollingTransport,
+    WebsocketTransport.name: WebsocketTransport
+}

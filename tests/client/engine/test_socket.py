@@ -45,3 +45,25 @@ class SocketTest(EngineIOServerBaseTest):
         self.assertTrue('message' in context)
         self.assertEqual(message, context['message'])
         gevent.kill(job)
+
+    def test_upgrade(self):
+        socket = Socket(host=self.host, port=self.port)
+        self.spawn(socket.open)
+        gevent.sleep(2)
+        self.assertEqual('websocket', socket.transport.name)
+
+        engine_socket = Server.engine_sockets[socket.id]
+
+        context = {}
+
+        def on_message(message):
+            context['message'] = message
+
+        engine_socket.on("message", on_message)
+
+        message = 'test message'
+        socket.send(message)
+
+        gevent.sleep(.2)
+
+        self.assertEqual(context['message'], message)

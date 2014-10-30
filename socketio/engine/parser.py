@@ -121,6 +121,12 @@ class Parser(object):
 
     @staticmethod
     def encode_payload(packets, supports_binary=True):
+        """
+
+        :param packets: (list, tuple)
+        :param supports_binary: bool
+        :return:
+        """
         if supports_binary is True:
             return Parser.encode_payload_as_binary(packets)
 

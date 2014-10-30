@@ -2,7 +2,7 @@ import json
 import gevent
 from gevent.queue import Queue
 from socketio.event_emitter import EventEmitter
-from .transports import XHRPollingTransport, WebsocketTransport
+from .transports import available_transports, Transport
 
 import logging
 logger = logging.getLogger(__name__)
@@ -14,6 +14,7 @@ class Socket(EventEmitter):
         self.host = host
         self.port = port
         self.path = path
+        self.id = None
         self.transports = transports
         self.upgrade = upgrade
         self.ready_state = None
@@ -39,13 +40,21 @@ class Socket(EventEmitter):
         self._set_transport(transport)
         transport.open()
 
-    def _create_transport(self, transport):
-        if transport == 'polling':
-            transport = XHRPollingTransport(host=self.host, port=self.port, path=self.path)
-        elif transport == 'websocket':
-            transport = WebsocketTransport(host=self.host, port=self.port, path=self.path)
-        else:
-            raise ValueError('Unknown transport type: %s', transport)
+    def _create_transport(self, name):
+        if name not in available_transports:
+            raise ValueError("Unknown transport [%s]", name)
+
+        transport_class = available_transports[name]
+        assert issubclass(transport_class, Transport)
+        transport = transport_class(
+            host=self.host,
+            port=self.port,
+            path=self.path,
+        )
+
+        assert isinstance(transport, Transport)
+        if self.id is not None:
+            transport.sid = self.id
 
         return transport
 
@@ -88,7 +97,7 @@ class Socket(EventEmitter):
         logger.debug('socket open')
         self.ready_state = 'open'
         self.emit('open')
-        self.flush()
+        self.flush(nowait=True)
 
         if 'open' == self.ready_state and self.upgrade and self.transport.pause:
             logger.debug('starting upgrade probes')
@@ -96,7 +105,106 @@ class Socket(EventEmitter):
                 self.probe(upgrade)
 
     def probe(self, upgrade):
-        logger.debug('probing transport %s', upgrade)
+        logger.debug('probing transport %s for sid: %s', upgrade, self.id)
+        transport = self._create_transport(upgrade)
+        assert isinstance(transport, Transport)
+
+        context = {
+            'failed': False
+        }
+
+        def on_transport_open():
+            logger.debug('probe transport [%s]', upgrade)
+            transport.send({
+                'type': 'ping',
+                'data': 'probe'
+            })
+
+            def packet_back(packet):
+                if context['failed']:
+                    return
+
+                if 'pong' == packet['type'] and 'probe' == packet['data']:
+                    logger.debug('probe transport [%s] pong', upgrade)
+                    self.upgrading = True
+                    self.emit('upgrading', transport)
+
+                    self.prior_websocket_success = 'websocket' == transport.name
+
+                    logger.debug('pause current transport [%s]', self.transport.name)
+
+                    # FIXME possible data loss
+                    self.transport.pause(nowait=True)
+
+                    if context['failed']:
+                        return
+
+                    if 'closed' == self.ready_state:
+                        return
+
+                    logger.debug('changing transport and sending upgrade packet')
+                    clean_transport(transport)
+
+                    self._set_transport(transport)
+                    transport.send({
+                        'type': 'upgrade'
+                    })
+                    self.emit('upgrade', transport)
+                    self.upgrading = False
+                    self.flush(nowait=True)
+
+                else:
+                    logger.debug('probe transport [%s] failed', upgrade)
+                    self.emit('upgrade_error', {
+                        'transport': upgrade
+                    })
+
+            transport.once('packet', packet_back)
+
+        def on_error(reason):
+            context['failed'] = True
+            clean_transport(transport)
+            transport.close()
+
+            self.emit('upgrade_error', {
+                'transport': upgrade,
+                'reason': reason
+            })
+
+        def on_transport_close():
+            on_error('transport closed')
+
+        def on_close():
+            on_error('socket closed')
+
+        def on_upgrade(to):
+            """
+            When the socket is upgraded while we're probing,
+            Stop probing and continue with upgraded transport
+            :param to: Transport upgrade to
+            """
+            if transport.name != to.name:
+                logger.debug('[%s] works - aborting [%s]', to.name, self.transport.name)
+                context['failed'] = True
+                clean_transport(transport)
+                transport.close()
+
+        def clean_transport(trans):
+            trans.remove_listener('open', on_transport_open)
+            trans.remove_listener('error', on_error)
+            trans.remove_listener('close', on_transport_close)
+
+            self.remove_listener('close', on_close)
+            self.remove_listener('upgrading', on_upgrade)
+
+        transport.once('open', on_transport_open)
+        transport.once('error', on_error)
+        transport.once('close', on_transport_close)
+
+        self.once('close', on_close)
+        self.once('upgrading', on_upgrade)
+
+        transport.open()
 
     def _ping(self):
         self.transport.send([{
