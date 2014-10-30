@@ -2,7 +2,7 @@ import json
 import gevent
 from gevent.queue import Queue
 from socketio.event_emitter import EventEmitter
-from .transports import XHRPollingTransport
+from .transports import XHRPollingTransport, WebsocketTransport
 
 import logging
 logger = logging.getLogger(__name__)
@@ -35,10 +35,19 @@ class Socket(EventEmitter):
 
         self.ready_state = 'opening'
 
-        # FIXME debug purpose
-        transport = XHRPollingTransport(host=self.host, port=self.port, path=self.path)
+        transport = self._create_transport(self.transports[0])
         self._set_transport(transport)
         transport.open()
+
+    def _create_transport(self, transport):
+        if transport == 'polling':
+            transport = XHRPollingTransport(host=self.host, port=self.port, path=self.path)
+        elif transport == 'websocket':
+            transport = WebsocketTransport(host=self.host, port=self.port, path=self.path)
+        else:
+            raise ValueError('Unknown transport type: %s', transport)
+
+        return transport
 
     def on_packet(self, packet):
         if 'open' == self.ready_state or 'opening' == self.ready_state:
@@ -88,7 +97,6 @@ class Socket(EventEmitter):
 
     def probe(self, upgrade):
         logger.debug('probing transport %s', upgrade)
-        #TODO add probing logic here
 
     def _ping(self):
         self.transport.send([{

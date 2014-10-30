@@ -37,7 +37,6 @@ class EngineHandler(WSGIHandler, EventEmitter):
         # This is why we define /socket.io url in web frameworks and points them to a view
         self.environ['engine_socket'] = socket
         try:
-            print "THIS IS WHAT INTERESTING THINGS"
             start_response = lambda status, headers, exc=None: None
             self.application(self.environ, start_response)
         except:

@@ -1,7 +1,9 @@
 from unittest import TestCase
 import gevent
+import sys
 from socketio.server import serve
 from tests import application
+import logging
 
 
 class SocketIOServerBaseTest(TestCase):
@@ -16,6 +18,7 @@ class SocketIOServerBaseTest(TestCase):
 
     def setUp(self):
         self.job = gevent.spawn(serve, application, host=self.host, port=self.port)
+        logging.basicConfig(stream=sys.stderr)
 
     def tearDown(self):
         gevent.kill(self.job)
