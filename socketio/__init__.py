@@ -6,7 +6,7 @@ log = logging.getLogger(__name__)
 def has_bin(arg):
     """
     Helper function checks whether args contains binary data
-    :param args:
+    :param args: list | tuple | bytearray | dict
     :return: (bool)
     """
     if type(arg) is list or type(arg) is tuple:

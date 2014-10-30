@@ -229,12 +229,6 @@ class Socket(EventEmitter):
         if 'open' == self.ready_state or 'opening' == self.ready_state:
             self.ping_job = gevent.spawn_later(self.ping_interval/1000, ping)
 
-    def connect(self):
-        pass
-
-    def packet(self, type, data):
-        pass
-
     def send(self, data):
         self.send_packet('message', data)
 
@@ -247,6 +241,9 @@ class Socket(EventEmitter):
             'data': data
         }
 
+        self.packet(packet, callback)
+
+    def packet(self, packet, callback=None):
         self.write_queue.put(packet)
         self.write_callback_queue.put(callback)
         self.flush(nowait=True)
@@ -262,5 +259,6 @@ class Socket(EventEmitter):
             self.transport.send(packets)
 
     def close(self):
+        # FIXME do a graceful close
         for job in self.jobs:
             gevent.kill(job)
