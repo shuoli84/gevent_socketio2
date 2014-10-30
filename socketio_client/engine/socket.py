@@ -63,7 +63,9 @@ class Socket(EventEmitter):
 
     def on_packet(self, packet):
         if 'open' == self.ready_state or 'opening' == self.ready_state:
-            logger.debug('socket receive: type: "%s", data: "%s"', packet['type'], packet['data'])
+            logger.debug('socket receive: type: "%s", data: "%s"',
+                         packet['type'],
+                         packet['data'] if 'data' in packet else 'None')
 
             self.emit('packet', packet)
             self.emit('heartbeat')

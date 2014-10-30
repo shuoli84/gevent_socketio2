@@ -156,6 +156,9 @@ class PollingTransport(Transport):
         """
         self.poll()
 
+        while self.ready_state == 'open':
+            self.poll()
+
     def on_data(self, data):
         logger.debug("polling got data %s", data)
 
@@ -178,7 +181,8 @@ class PollingTransport(Transport):
             self.emit("poll_complete")
 
             if 'open' == self.ready_state:
-                self.poll()
+                # Return to let outer loop call next poll
+                return True
             else:
                 logger.debug('ignoring polling - transport state "%s"', self.ready_state)
 

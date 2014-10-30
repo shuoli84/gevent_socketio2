@@ -55,7 +55,7 @@ class SocketIOClient(EventEmitter):
             self.open_reconnect = True
             self.reconnect()
 
-    def open(self, callback=lambda x: x):
+    def open(self, callback=None):
         logger.debug('ready_state %s', self.ready_state)
         if self.ready_state == 'open' or self.ready_state == 'opening':
             return
@@ -70,7 +70,8 @@ class SocketIOClient(EventEmitter):
 
         def on_open():
             self.on_open()
-            callback()
+            if callback:
+                callback()
         engine_socket.on('open', on_open, id(self))
 
         def on_error(error):
@@ -79,7 +80,8 @@ class SocketIOClient(EventEmitter):
             self.ready_state = 'closed'
             self.emit_all('connect_error', error)
 
-            callback(error)
+            if callback:
+                callback(error)
 
             self.maybe_reconnect_on_open()
 
