@@ -16,7 +16,12 @@ class ClientTest(SocketIOServerBaseTest):
             context['flag'] = True
 
         job = gevent.spawn(client.open, on_open)
-        gevent.sleep(2)
+        gevent.sleep(.5)
         print client.engine_socket.ready_state
+
+        socket = client.socket('chat')
+        socket.emit('message', {'what': 'the'})
+
+        gevent.sleep(.2)
 
         gevent.kill(job)
