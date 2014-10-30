@@ -17,7 +17,7 @@ class SocketIOClient(EventEmitter):
 
         self._set_uri(uri)
         self.transports = transports
-        self.ready_status = 'closed'
+        self.ready_state = 'closed'
         self.auto_connect = auto_connect
         self.nsps = {}
         self.connected = set()
@@ -56,8 +56,8 @@ class SocketIOClient(EventEmitter):
             self.reconnect()
 
     def open(self, callback=lambda x: x):
-        logger.debug('ready_state %s', self.ready_status)
-        if self.ready_status == 'open' or self.ready_status == 'opening':
+        logger.debug('ready_state %s', self.ready_state)
+        if self.ready_state == 'open' or self.ready_state == 'opening':
             return
 
         logger.debug('opening %s', self.uri)
@@ -66,7 +66,7 @@ class SocketIOClient(EventEmitter):
             host=self.host, path=self.path, port=self.port,
             transports=self.transports, **self.config)
         self.engine_socket = engine_socket
-        self.ready_status = 'opening'
+        self.ready_state = 'opening'
 
         def on_open():
             self.on_open()
@@ -76,7 +76,7 @@ class SocketIOClient(EventEmitter):
         def on_error(error):
             logger.debug('connect_error')
             self.cleanup()
-            self.ready_status = 'closed'
+            self.ready_state = 'closed'
             self.emit_all('connect_error', error)
 
             callback(error)
@@ -107,7 +107,7 @@ class SocketIOClient(EventEmitter):
         logger.debug('open')
         self.cleanup()
 
-        self.ready_status = 'open'
+        self.ready_state = 'open'
         self.emit('open')
 
         engine_socket = self.engine_socket
@@ -143,6 +143,8 @@ class SocketIOClient(EventEmitter):
                 self.connected.add(socket)
 
         socket.on('connect', on_connect, id(self))
+        socket.open()
+
         return socket
 
     def destroy(self, socket):
@@ -174,7 +176,7 @@ class SocketIOClient(EventEmitter):
         self.decoder.destroy()
 
     def close(self):
-        self.ready_status = 'closed'
+        self.ready_state = 'closed'
         if self.engine_socket:
             self.engine_socket.close()
 
@@ -183,7 +185,7 @@ class SocketIOClient(EventEmitter):
     def on_close(self, reason=''):
         logger.debug('close')
         self.cleanup()
-        self.ready_status = 'closed'
+        self.ready_state = 'closed'
         self.emit('close', reason)
 
         if self.reconnection and not self.skip_reconnect:

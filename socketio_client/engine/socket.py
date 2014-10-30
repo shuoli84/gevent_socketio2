@@ -136,8 +136,7 @@ class Socket(EventEmitter):
 
                     logger.debug('pause current transport [%s]', self.transport.name)
 
-                    # FIXME possible data loss
-                    self.transport.pause(nowait=True)
+                    self.transport.pause()
 
                     if context['failed']:
                         return
@@ -235,6 +234,8 @@ class Socket(EventEmitter):
     def send(self, data):
         self.send_packet('message', data)
 
+    write = send
+
     def send_packet(self, packet_type, data=None, callback=None):
         if self.ready_state in ('closing', 'close'):
             return
@@ -258,7 +259,6 @@ class Socket(EventEmitter):
 
             logger.debug("flushing %d packets", self.write_queue.qsize())
             packets = [self.write_queue.get()]
-            print self.transport
             self.transport.send(packets)
 
     def close(self):

@@ -92,7 +92,7 @@ class PollingTransport(Transport):
         self.sid = None
         super(PollingTransport, self).__init__(*args, **kwargs)
 
-    def pause(self, nowait=True, timeout=30):
+    def pause(self, nowait=False, timeout=30):
         """
         Pause polling
         :param nowait: bool

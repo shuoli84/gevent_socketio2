@@ -8,7 +8,6 @@ import logging
 logger = logging.getLogger()
 logger.level = logging.DEBUG
 stream_handler = logging.StreamHandler(sys.stdout)
-logger.addHandler(stream_handler)
 
 
 class EngineIOServerBaseTest(TestCase):
@@ -26,7 +25,9 @@ class EngineIOServerBaseTest(TestCase):
         self.spawn(serve, application, host=self.host, port=self.port)
 
     def setUp(self):
-        logging.basicConfig(stream=sys.stderr)
+        if hasattr(self, 'show_log') and self.show_log:
+            logger.addHandler(stream_handler)
+            logging.basicConfig(stream=sys.stderr)
         self.start_server()
 
     def tearDown(self):

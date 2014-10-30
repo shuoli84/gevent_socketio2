@@ -39,7 +39,7 @@ class Socket(EventEmitter):
         if auto_connect:
             self.open()
 
-    def _set_engine_socket(self, io):
+    def _set_io(self, io):
         """
         Hook up with engine socket
         :param io: EngineSocket
@@ -57,7 +57,6 @@ class Socket(EventEmitter):
         io.remove_listener('close', self.on_close)
 
     def on_packet(self, packet):
-        print packet
         if packet['nsp'] != self.namespace:
             logger.warn('Namespace not match')
             return
@@ -91,10 +90,10 @@ class Socket(EventEmitter):
         if self.connected:
             return
 
-        self._set_engine_socket(self.client)
+        self._set_io(self.client)
         self.client.open()
 
-        if 'open' == self.ready_state:
+        if 'open' == self.client.ready_state:
             self.on_open()
 
     connect = open
@@ -140,7 +139,6 @@ class Socket(EventEmitter):
             self.send_buffer.append(packet)
 
     def packet(self, packet):
-        print 'setting nsp %s' % self.namespace
         packet['nsp'] = self.namespace
         self.client.packet(packet)
 

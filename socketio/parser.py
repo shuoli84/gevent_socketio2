@@ -76,6 +76,8 @@ class Encoder(object):
         # we append it followed by a comma ','
         if 'nsp' in obj and '/' != obj['nsp']:
             nsp = True
+            if not obj['nsp'].startswith('/'):
+                string += '/'
             string += obj['nsp']
 
         # immediately followed by the id

@@ -14,9 +14,6 @@ class EventEmitter(object):
         Returns a function that takes an event listener callback
         """
         def _on(f):
-            #fire 'new_listener' *before* adding the new listener!
-            self.emit('new_listener')
-
             # Add the necessary function
             self._events[event].append(f)
 
