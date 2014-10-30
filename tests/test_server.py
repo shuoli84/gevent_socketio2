@@ -1,7 +1,7 @@
 from gevent.monkey import patch_all
 patch_all()
 
-from tests.engine.base_server_test import SocketIOServerBaseTest
+from tests.socketio_test_server import SocketIOServerBaseTest
 import json
 import gevent
 

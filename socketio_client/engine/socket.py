@@ -9,7 +9,7 @@ logger = logging.getLogger(__name__)
 
 
 class Socket(EventEmitter):
-    def __init__(self, host, port, path='/socket.io/', transports=("polling", "websocket"), upgrade=True):
+    def __init__(self, host, port, path='/socket.io/', transports=("polling", "websocket"), upgrade=True, **kwargs):
         super(Socket, self).__init__()
         self.host = host
         self.port = port
@@ -25,6 +25,8 @@ class Socket(EventEmitter):
         self.ping_job = None
         self.ping_timeout_job = None
         self.jobs = []
+
+        self.config = kwargs
 
     def _set_transport(self, transport):
         transport.on("packet", self.on_packet)
@@ -50,6 +52,7 @@ class Socket(EventEmitter):
             host=self.host,
             port=self.port,
             path=self.path,
+            **self.config
         )
 
         assert isinstance(transport, Transport)

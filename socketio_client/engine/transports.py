@@ -5,7 +5,6 @@ import urlparse
 import gevent
 from gevent.event import Event
 import requests
-from ws4py.messaging import TextMessage
 from socketio.engine import parser
 from socketio.event_emitter import EventEmitter
 import logging

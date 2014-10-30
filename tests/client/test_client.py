@@ -1,20 +1,22 @@
-from unittest import TestCase
+from gevent.monkey import patch_all
+patch_all()
+import gevent
+
 from socketio_client.client import SocketIOClient
+from tests.socketio_test_server import SocketIOServerBaseTest
 
 
-class ClientTest(TestCase):
-    def test_example(self):
-        client = SocketIOClient(schema="http", host="localhost", port="8080", resource="socket.io", transports=('polling', 'websocket'))
-        self.assertIsNotNone(client)
+class ClientTest(SocketIOServerBaseTest):
+    def test_client_open(self):
+        client = SocketIOClient('http://%s:%s/socket.io/' % (self.host, self.port))
 
-        namespace = client.of("/chat")
-        namespace.on('connect', lambda socket: True)
-        namespace.on('disconnect', lambda socket: True)
+        context = {'flag': False}
 
-        def on_message(socket, data):
-            socket.emit('message', data)
+        def on_open(err=None):
+            context['flag'] = True
 
-        namespace.on('message', on_message)
+        job = gevent.spawn(client.open, on_open)
+        gevent.sleep(2)
+        print client.engine_socket.ready_state
 
-        # After the setup, now we wait on the client
-        client.join()
+        gevent.kill(job)

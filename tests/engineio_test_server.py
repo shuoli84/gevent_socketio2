@@ -1,9 +1,14 @@
-import logging
 from unittest import TestCase
 import gevent
 import sys
 from socketio.engine.server import serve
 from tests import application
+import logging
+
+logger = logging.getLogger()
+logger.level = logging.DEBUG
+stream_handler = logging.StreamHandler(sys.stdout)
+logger.addHandler(stream_handler)
 
 
 class EngineIOServerBaseTest(TestCase):
@@ -17,9 +22,12 @@ class EngineIOServerBaseTest(TestCase):
         self.jobs = []
         super(EngineIOServerBaseTest, self).__init__(*args, **kwarg)
 
+    def start_server(self):
+        self.spawn(serve, application, host=self.host, port=self.port)
+
     def setUp(self):
-        self.job = gevent.spawn(serve, application, host=self.host, port=self.port)
         logging.basicConfig(stream=sys.stderr)
+        self.start_server()
 
     def tearDown(self):
         print "Killing [%d] jobs" % len(self.jobs)

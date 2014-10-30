@@ -5,15 +5,8 @@ import sys
 patch_all()
 
 from socketio_client.engine.socket import Socket
-from tests.client.engine.base_server_test import EngineIOServerBaseTest
+from tests.engineio_test_server import EngineIOServerBaseTest
 from socketio.engine.server import Server
-
-import logging
-
-logger = logging.getLogger()
-logger.level = logging.DEBUG
-stream_handler = logging.StreamHandler(sys.stdout)
-logger.addHandler(stream_handler)
 
 
 class SocketTest(EngineIOServerBaseTest):

@@ -1,6 +1,5 @@
 from socketio import has_bin
 from socketio.event_emitter import EventEmitter
-from engine.socket import Socket as EngineSocket
 import socketio.parser as Parser
 
 import logging
@@ -12,10 +11,10 @@ internal_events = {'connect', 'connect_error', 'connect_timeout', 'disconnect', 
 
 class Socket(EventEmitter):
 
-    def __init__(self, engine_socket, namespace):
+    def __init__(self, client, namespace, **kwargs):
         """
 
-        :param engine_socket: EngineSocket
+        :param client: Client
         :param namespace: string
         :return:
         """
@@ -23,7 +22,7 @@ class Socket(EventEmitter):
 
         self.ready_state = None
 
-        self.engine_socket = engine_socket
+        self.client = client
         self.namespace = namespace
         self.ids = 0
         self.acks = {}
@@ -34,26 +33,27 @@ class Socket(EventEmitter):
         self.connected = False
         self.disconnected = True
 
-    def _set_engine_socket(self, engine_socket):
+        self.config = kwargs
+
+    def _set_engine_socket(self, io):
         """
         Hook up with engine socket
-        :param engine_socket: EngineSocket
+        :param io: EngineSocket
         :return:
         """
 
-        assert isinstance(engine_socket, EngineSocket)
-        engine_socket.on('open', self.on_open)
-        engine_socket.on('packet', self.on_packet)
-        engine_socket.on('close', self.on_close)
+        io.on('open', self.on_open)
+        io.on('packet', self.on_packet)
+        io.on('close', self.on_close)
 
-    def _clean_engine_socket(self, engine_socket):
-        assert isinstance(engine_socket, EngineSocket)
+    def _clean_engine_socket(self, io):
 
-        engine_socket.remove_listener('open', self.on_open)
-        engine_socket.remove_listener('packet', self.on_packet)
-        engine_socket.remove_listener('close', self.on_close)
+        io.remove_listener('open', self.on_open)
+        io.remove_listener('packet', self.on_packet)
+        io.remove_listener('close', self.on_close)
 
     def on_packet(self, packet):
+        print packet
         if packet['nsp'] != self.namespace:
             logger.warn('Namespace not match')
             return
@@ -69,7 +69,7 @@ class Socket(EventEmitter):
         elif packet_type == Parser.ACK:
             self.on_ack(packet)
         elif packet_type == Parser.BINARY_ACK:
-            self.on_bin_ack(packet)
+            self.on_ack(packet)
         elif packet_type == Parser.DISCONNECT:
             self.on_disconnect()
         elif packet_type == Parser.ERROR:
@@ -87,8 +87,8 @@ class Socket(EventEmitter):
         if self.connected:
             return
 
-        self._set_engine_socket(self.engine_socket)
-        self.engine_socket.open()
+        self._set_engine_socket(self.client)
+        self.client.open()
 
         if 'open' == self.ready_state:
             self.on_open()
@@ -137,7 +137,7 @@ class Socket(EventEmitter):
 
     def packet(self, packet):
         packet['nsp'] = self.namespace
-        self.engine_socket.packet(packet)
+        self.client.packet(packet)
 
     def on_event(self, packet):
         data = packet['data']
@@ -216,9 +216,9 @@ class Socket(EventEmitter):
         self.on_close('io server disconnect')
 
     def destroy(self):
-        self._clean_engine_socket(self.engine_socket)
-        self.engine_socket.destroy()
-        self.engine_socket = None
+        self._clean_engine_socket(self.client)
+        self.client.destroy()
+        self.client = None
 
     def on_close(self, reason=''):
         logger.debug('close (%s)', reason)

@@ -5,7 +5,7 @@ patch_all()
 
 import json
 from socketio_client.engine.transports import XHRPollingTransport, WebsocketTransport
-from tests.client.engine.base_server_test import EngineIOServerBaseTest
+from tests.engineio_test_server import EngineIOServerBaseTest
 
 
 class PollingTest(EngineIOServerBaseTest):
