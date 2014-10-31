@@ -228,7 +228,7 @@ class Socket(EventEmitter):
             def ping_timeout():
                 pass
 
-            self.ping_timeout_job = gevent.spawn_later(ping_timeout, self.ping_timeout)
+            self.ping_timeout_job = gevent.spawn_later(self.ping_timeout, ping_timeout)
 
         if 'open' == self.ready_state or 'opening' == self.ready_state:
             self.ping_job = gevent.spawn_later(self.ping_interval/1000, ping)
