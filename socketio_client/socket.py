@@ -130,9 +130,10 @@ class Socket(EventEmitter):
 
         if 'callback' in kwargs:
             cb = kwargs['callback']
-            self.acks[self.ids] = cb
-            packet['id'] = self.ids
-            self.ids += 1
+            if cb:
+                self.acks[self.ids] = cb
+                packet['id'] = self.ids
+                self.ids += 1
 
         if self.connected:
             self.packet(packet)
@@ -156,7 +157,7 @@ class Socket(EventEmitter):
             callback = self.acks[packet['id']]
 
         if self.connected:
-            self.emit(*data, callback=callback)
+            super(Socket, self).emit(*data, callback=callback)
         else:
             self.recv_buffer.append((data, callback))
 
