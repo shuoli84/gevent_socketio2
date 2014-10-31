@@ -62,19 +62,18 @@ class Binary(object):
     @staticmethod
     def reconstruct_packet(packet, buffers):
         def _reconstruct_packet(data):
-            if data and '_placeholder' in data:
-                buf = buffers[data['num']]
-                return buf
+            if type(data) is dict:
+                if '_placeholder' in data:
+                    buf = buffers[data['num']]
+                    return buf
+                else:
+                    for k, v in data.items():
+                        data[k] = _reconstruct_packet(v)
+                    return data
 
             if type(data) is list:
                 for i in xrange(len(data)):
                     data[i] = _reconstruct_packet(data[i])
-
-                return data
-
-            if data and type(data) is dict:
-                for k, v in data.items():
-                    data[k] = _reconstruct_packet(v)
 
                 return data
 

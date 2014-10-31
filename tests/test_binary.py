@@ -90,6 +90,17 @@ class BinaryTest(TestCase):
         packet = Binary.reconstruct_packet(results['packet'], results['buffers'])
         self.assertEqual(packet['data']['world'], bytearray([4, 5]))
 
+        results = Binary.deconstruct_packet({
+            'type': 'event',
+            'data': {
+                'hello': 'what',
+                'world': bytearray([4, 5]),
+                'yes': True
+            }
+        })
+        packet = Binary.reconstruct_packet(results['packet'], results['buffers'])
+        self.assertEqual('what', packet['data']['hello'])
+
     def test_remove_blobs(self):
         data = 'hello'
         data = Binary.remove_blobs(data)

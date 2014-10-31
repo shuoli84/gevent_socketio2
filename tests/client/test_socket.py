@@ -21,7 +21,7 @@ class SocketTest(SocketIOServerBaseTest):
         def message(socket):
             socket.on('message', SocketTest.on_message)
             socket.emit('message', {'hello': 'world'})
-            socket.emit('message', {'hello': bytearray('world')})
+            socket.emit('message', {'hello': True, 'world': bytearray('world')})
 
         ns.on('connection', message)
 
