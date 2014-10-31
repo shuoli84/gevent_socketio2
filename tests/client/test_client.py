@@ -25,5 +25,6 @@ class ClientTest(SocketIOServerBaseTest):
         socket = client.socket('chat')
         socket.emit('message', {'what': 'the'})
 
+        self.assertEqual('websocket', client.engine_socket.transport.name)
         gevent.sleep(2)
         gevent.kill(job)

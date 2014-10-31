@@ -23,7 +23,7 @@ class Socket(EventEmitter):
         self.ready_state = None
 
         self.client = client
-        self.namespace = namespace
+        self.namespace = namespace if namespace.startswith('/') else '/' + namespace
         self.ids = 0
         self.acks = {}
 
@@ -58,7 +58,7 @@ class Socket(EventEmitter):
 
     def on_packet(self, packet):
         if packet['nsp'] != self.namespace:
-            logger.warn('Namespace not match')
+            logger.warn('Namespace not match incoming: [%s], self [%s]', packet['nsp'], self.namespace)
             return
 
         packet_type = packet['type']
@@ -122,9 +122,10 @@ class Socket(EventEmitter):
         if has_bin(args):
             parser_type = Parser.BINARY_EVENT
 
+        data = [event] + list(args)
         packet = {
             'type': parser_type,
-            'data': args,
+            'data': data,
         }
 
         if 'callback' in kwargs:
