@@ -261,6 +261,9 @@ class Socket(EventEmitter):
 
             logger.debug("flushing %d packets", self.write_queue.qsize())
             packets = [self.write_queue.get()]
+            while self.write_queue.qsize():
+                packets.append(self.write_queue.get())
+
             self.transport.send(packets)
 
     def close(self):
