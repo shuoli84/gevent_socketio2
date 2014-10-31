@@ -56,6 +56,11 @@ class PollingTest(EngineIOServerBaseTest):
             'data': 'hello world'
             }])
 
+        transport.send([{
+            'type': 'message',
+            'data': bytearray('hahaha')
+        }])
+
         context = {}
         def on_packet(packet):
             context['packet'] = packet

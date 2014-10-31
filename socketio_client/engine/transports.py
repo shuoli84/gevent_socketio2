@@ -331,7 +331,8 @@ class WebsocketTransport(Transport):
         for packet in packets:
             encoded_packet = parser.Parser.encode_packet(packet, self.supports_binary)
             try:
-                self.websocket.send(encoded_packet)
+                binary = type(encoded_packet) is bytearray
+                self.websocket.send(encoded_packet, binary=binary)
             except RuntimeError, e:
                 self.on_error('The websocket clsoed without a close packet (%s)', e)
         self.on_drain()

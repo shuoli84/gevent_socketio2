@@ -1,6 +1,7 @@
 # coding=utf-8
 from unittest import TestCase
 from cStringIO import StringIO
+from socketio import has_bin
 from socketio.binary import Binary
 
 
@@ -100,3 +101,6 @@ class BinaryTest(TestCase):
 
         data = Binary.remove_blobs(['hello', bytearray([1,2]), StringIO('hi')])
         self.assertEqual(type(data[2]), bytearray)
+
+    def test_has_bin(self):
+        self.assertTrue(has_bin({'what': bytearray('ahahah')}))

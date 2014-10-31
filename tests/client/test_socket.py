@@ -8,18 +8,20 @@ from socketio_client.client import SocketIOClient
 from tests.socketio_test_server import SocketIOServerBaseTest
 
 
-class ClientTest(SocketIOServerBaseTest):
+class SocketTest(SocketIOServerBaseTest):
     show_log = False
 
     def setUp(self):
-        super(ClientTest, self).setUp()
+        super(SocketTest, self).setUp()
         # Setup a chat namespace
 
         ns = SocketIOServer.default_server.of('chat')
-        ns.on('message', ClientTest.on_message)
+        ns.on('message', SocketTest.on_message)
 
         def message(socket):
-            socket.on('message', ClientTest.on_message)
+            socket.on('message', SocketTest.on_message)
+            socket.emit('message', {'hello': 'world'})
+            socket.emit('message', {'hello': bytearray('world')})
 
         ns.on('connection', message)
 
@@ -28,7 +30,7 @@ class ClientTest(SocketIOServerBaseTest):
     def on_message(cls, data):
         print data
 
-    def test_client_open(self):
+    def test_socket(self):
         client = SocketIOClient('http://%s:%s/socket.io/' % (self.host, self.port))
         job = gevent.spawn(client.open)
         gevent.sleep(.5)
@@ -37,5 +39,10 @@ class ClientTest(SocketIOServerBaseTest):
         socket.emit('message', {'what': 'the'})
 
         self.assertEqual('websocket', client.engine_socket.transport.name)
-        gevent.sleep(2)
+        gevent.sleep(.2)
+
+        # Test sending message from server
+        SocketIOServer.default_server.of('chat')
+
+        gevent.sleep(0.2)
         gevent.kill(job)

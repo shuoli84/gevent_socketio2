@@ -161,7 +161,7 @@ class Socket(EventEmitter):
     def on_event(self, packet):
         if 'id' in packet:
             callback = self.ack(packet['id'])
-            raise NotImplementedError()
+            print "NOT IMPLEMENTED THE ACK"
 
         packet_data = packet.get('data', [])
 
