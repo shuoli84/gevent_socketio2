@@ -319,9 +319,9 @@ class WebsocketTransport(Transport):
             msg = self.websocket.receive()
             if msg is not None:
                 if msg.is_text:
-                    self.on_data(str(msg))
+                    self.on_data(str(msg.data))
                 else:
-                    self.on_data(msg.data)
+                    self.on_data(bytearray(msg.data))
             else:
                 break
 

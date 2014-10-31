@@ -1,11 +1,11 @@
 import gevent
 from gevent.monkey import patch_all
-
 patch_all()
 
 import json
 from socketio_client.engine.transports import XHRPollingTransport, WebsocketTransport
 from tests.engineio_test_server import EngineIOServerBaseTest
+from socketio.engine.server import Server
 
 
 class PollingTest(EngineIOServerBaseTest):
@@ -55,3 +55,24 @@ class PollingTest(EngineIOServerBaseTest):
             'type': 'message',
             'data': 'hello world'
             }])
+
+        context = {}
+        def on_packet(packet):
+            context['packet'] = packet
+
+        transport.on('packet', on_packet)
+        gevent.sleep(.2)
+
+        # Send data from server
+        socket = Server.default_server.engine_sockets.values()[0]
+        """:type : socketio.engine.socket.Socket"""
+
+        socket.send('hello')
+        gevent.sleep(.2)
+
+        self.assertEqual('hello', context['packet']['data'])
+
+        socket.send(bytearray([1, 2, 3]))
+        gevent.sleep(.2)
+
+        self.assertEqual(context['packet']['data'], bytearray([1, 2, 3]))
