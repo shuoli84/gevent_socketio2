@@ -9,7 +9,7 @@ from tests.socketio_test_server import SocketIOServerBaseTest
 
 
 class SocketTest(SocketIOServerBaseTest):
-    show_log = False
+    show_log = True
 
     def setUp(self):
         super(SocketTest, self).setUp()
@@ -30,6 +30,10 @@ class SocketTest(SocketIOServerBaseTest):
     def on_message(cls, data):
         print data
 
+    @classmethod
+    def on_socket_message(cls, data, **kwargs):
+        print "Client Socket: " + str(data)
+
     def test_socket(self):
         client = SocketIOClient('http://%s:%s/socket.io/' % (self.host, self.port))
         job = gevent.spawn(client.open)
@@ -38,11 +42,13 @@ class SocketTest(SocketIOServerBaseTest):
         socket = client.socket('chat')
         socket.emit('message', {'what': 'the'})
 
+        socket.on('message', self.on_socket_message)
+
         self.assertEqual('websocket', client.engine_socket.transport.name)
         gevent.sleep(.2)
 
         # Test sending message from server
-        SocketIOServer.default_server.of('chat')
-
-        gevent.sleep(0.2)
+        namespace = SocketIOServer.default_server.of('chat')
+        namespace.emit("message", {"hell": "!"})
+        gevent.sleep(1)
         gevent.kill(job)

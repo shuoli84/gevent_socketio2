@@ -68,7 +68,6 @@ class Socket(EventEmitter):
                          packet['data'] if 'data' in packet else 'None')
 
             self.emit('packet', packet)
-            self.emit('heartbeat')
 
             packet_type = packet['type']
 

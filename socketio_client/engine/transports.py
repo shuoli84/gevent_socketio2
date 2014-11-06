@@ -14,7 +14,6 @@ logger = logging.getLogger(__name__)
 
 
 class Transport(EventEmitter):
-    timestamps = 0
     protocol_version = 3
     name = '_base_transport'
 
@@ -78,6 +77,7 @@ class Transport(EventEmitter):
         self.emit('close')
 
     def do_close(self):
+        # FIXME subclass not implement this
         raise NotImplementedError()
 
     def do_open(self):
@@ -89,7 +89,6 @@ class PollingTransport(Transport):
 
     def __init__(self, *args, **kwargs):
         self.polling = False
-        self.sid = None
         super(PollingTransport, self).__init__(*args, **kwargs)
 
     def pause(self, nowait=False, timeout=30):
@@ -340,9 +339,6 @@ class WebsocketTransport(Transport):
     def on_drain(self):
         self.writable = True
         self.emit('drain')
-
-
-        self.writable = True
 
     def uri(self):
         schema = 'wss' if self.secure else 'ws'

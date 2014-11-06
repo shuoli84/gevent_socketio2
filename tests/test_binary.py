@@ -19,6 +19,7 @@ class BinaryTest(TestCase):
             'type': 'event',
             'data': bytearray([0, 1, 2])
         })
+        print results["packet"]
 
         self.assertEqual(results['packet']['attachments'], 1)
         self.assertEqual(len(results['buffers']), 1)
@@ -34,6 +35,7 @@ class BinaryTest(TestCase):
             ]
         })
 
+        print results['packet']
         self.assertEqual(len(results['buffers']), 2)
 
         results = Binary.deconstruct_packet({

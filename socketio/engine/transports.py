@@ -43,6 +43,7 @@ class BaseTransport(EventEmitter):
         ]
 
         self.supports_binary = config.pop("supports_binary", True)
+
         self.ready_state = "opening"
 
         self.handler = handler

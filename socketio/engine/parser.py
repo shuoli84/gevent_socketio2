@@ -9,9 +9,6 @@ class Parser(object):
     The parser which encode and decode engine packet
     """
 
-    # Current protocol version
-    protocol = 3
-
     # Packet type
     packet_types = {
         "open": 0,
@@ -105,7 +102,6 @@ class Parser(object):
             "type": Parser.packet_type_lists[packet_type],
             "data": data[1:]
         }
-
 
     @staticmethod
     def decode_base64_packet(data):

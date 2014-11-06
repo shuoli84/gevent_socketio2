@@ -189,6 +189,9 @@ class Socket(EventEmitter):
         Invoked when underlying transport received a new packet
         :param packet:
         """
+
+        print "Received packet: %s" % str(packet)
+
         if self.STATE_OPEN == self.ready_state:
             self.emit("packet", packet)
             self._set_ping_timeout_eventlet()

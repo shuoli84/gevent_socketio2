@@ -122,7 +122,11 @@ class SocketIOClient(EventEmitter):
         self.decoder.add(data)
 
     def on_decoded(self, packet):
-        self.emit('packet', packet)
+        # Should only emit to the right socket, otherwise, all namespaces got the message
+        nsp = packet['nsp']
+        if nsp in self.nsps:
+            socket = self.nsps[nsp]
+            socket.on_packet(packet)
 
     def on_error(self, err):
         logger.debug('error %s', str(err))
@@ -134,6 +138,8 @@ class SocketIOClient(EventEmitter):
         :param nsp: string
         :return: Socket
         """
+        if not nsp.startswith('/'):
+            nsp = '/' + nsp
         if nsp in self.nsps:
             return self.nsps[nsp]
 

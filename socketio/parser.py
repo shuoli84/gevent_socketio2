@@ -160,7 +160,7 @@ class Decoder(EventEmitter):
             attachment = ''
 
             i += 1
-            while string[i] != '-':
+            while i < len(string) and string[i] != '-':
                 attachment += string[i]
                 i += 1
 

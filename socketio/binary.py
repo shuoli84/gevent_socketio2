@@ -18,12 +18,6 @@ class Binary(object):
         packet_data = packet.get('data', None)
 
         def _deconstruct_packet(data):
-            if data is None:
-                return {
-                    'packet': packet,
-                    'buffers': buffers
-                }
-
             if type(data) is bytearray:
                 place_holder = {
                     '_placeholder': True,
