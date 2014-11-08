@@ -198,6 +198,7 @@ class Socket(EventEmitter):
         cb(packet['data'])
 
     def on_connect(self):
+        self.ready_state = 'open'
         self.connected = True
         self.disconnected = False
         self.emit('connect')
