@@ -48,7 +48,8 @@ class Client(EventEmitter):
         if name not in self.server.namespaces:
             self.packet({
                 'type': Parser.ERROR,
-                'data': 'Invalid namespace'
+                'data': 'Invalid namespace',
+                'nsp': name
             })
             return
 
