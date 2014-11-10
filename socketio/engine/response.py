@@ -1,7 +1,7 @@
 # coding=utf-8
-from pyee import EventEmitter
 from webob.response import Response as WSGIResponse
 from gevent.event import Event
+from ..event_emitter import EventEmitter
 
 
 class Response(WSGIResponse, EventEmitter):

@@ -4,7 +4,6 @@ from gevent.pywsgi import WSGIServer
 from geventwebsocket.handler import WebSocketHandler
 from .handler import EngineHandler
 import logging
-from socketio.event_emitter import EventEmitter
 
 __all__ = ['Server']
 

@@ -1,12 +1,12 @@
 # coding=utf-8
 from __future__ import absolute_import
 import logging
-from pyee import EventEmitter
 from . import has_bin
 from .adapter import Adapter
 from .socket import Socket
 from .engine.socket import Socket as EngineSocket
 from . import parser as SocketIOParser
+from .event_emitter import EventEmitter
 
 logger = logging.getLogger(__name__)
 

@@ -2,7 +2,7 @@ from setuptools import setup
 setup(
   name = 'gevent_socketio2',
   packages = ['socketio', 'socketio.engine', 'socketio.event_emitter'],
-  version = '0.2.0',
+  version = '0.2.1',
   description = 'A gevent implementation for socketio protocol 1.0',
   author = 'Shuo Li',
   author_email = 'shuoli84@gmail.com',
@@ -14,7 +14,6 @@ setup(
     'greenlet==0.4.4',
     'gevent-websocket==0.9.3',
     'WebOb==1.4',
-    'pyee==0.1.0',
     'requests==2.4.1',
     'ws4py==0.3.4',
   ],

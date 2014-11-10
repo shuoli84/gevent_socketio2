@@ -3,11 +3,11 @@ from __future__ import absolute_import
 
 import gevent
 from gevent.pywsgi import WSGIHandler
-from pyee import EventEmitter
 import sys
 from webob import Request
 from .response import Response
 from .socket import Socket
+from ..event_emitter import EventEmitter
 from .transports import WebsocketTransport
 import logging
 

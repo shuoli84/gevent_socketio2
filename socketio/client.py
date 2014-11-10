@@ -1,8 +1,8 @@
 # coding=utf-8
-from pyee import EventEmitter
 import parser as Parser
 import logging
 from engine.socket import Socket as EngineSocket
+from .event_emitter import EventEmitter
 
 logger = logging.getLogger(__name__)
 
