@@ -151,6 +151,7 @@ class PollingTransport(BaseTransport):
             logger.debug('request overlap')
             self.on_error('overlap from client')
             self.request.response.end(500)
+            return
 
         logger.debug('setting request')
 

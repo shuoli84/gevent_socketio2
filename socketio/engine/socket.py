@@ -100,7 +100,6 @@ class Socket(EventEmitter):
     STATE_CLOSING = "CLOSING"
     STATE_CLOSED = "CLOSED"
 
-
     def __init__(self, request, supports_binary=True, ping_interval=5000, ping_timeout=10000, upgrade_timeout=30):
         super(Socket, self).__init__()
 
@@ -148,16 +147,13 @@ class Socket(EventEmitter):
 
     def _set_transport(self, transport):
         self.transport = transport
-        self.transport.once('error', self.on_error)
-        self.transport.on('packet', self.on_packet)
-        self.transport.on('drain', self.flush_nowait)
-        self.transport.once('close', self.on_close)
+        self.transport.once('error', self.on_error, id(self))
+        self.transport.on('packet', self.on_packet, id(self))
+        self.transport.on('drain', self.flush_nowait, id(self))
+        self.transport.once('close', self.on_close, id(self))
 
     def _clear_transport(self):
-        self.transport.remove_listener('close', self.on_close)
-        self.transport.remove_listener('drain', self.on_packet)
-        self.transport.remove_listener('packet', self.on_packet)
-        self.transport.remove_listener('error', self.on_error)
+        self.transport.remove_listeners_by_key(id(self))
         self.transport.on('error', lambda: logger.debug('error triggered by discarded transport'))
         self.transport = None
 
@@ -237,7 +233,7 @@ class Socket(EventEmitter):
 
             self._clear_transport()
             self.ready_state = self.STATE_CLOSED
-            self.emit("close", "received close message", *args, **kwargs)
+            self.emit("close", "Transport closed", *args, **kwargs)
             self.write_buffer = None
 
     def maybe_upgrade(self, transport):

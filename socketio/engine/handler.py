@@ -59,7 +59,6 @@ class EngineHandler(WSGIHandler, EventEmitter):
         # Create a request and a response
         request = Request(self.get_environ())
 
-        # TODO consider use weakref for all circular reference. Though python's GC handles this
         setattr(request, 'handler', self)
         setattr(request, 'response', Response())
 
