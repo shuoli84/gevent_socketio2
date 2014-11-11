@@ -46,7 +46,7 @@ def default_error_handler(socket, error_name, error_message, endpoint,
         socket.send_packet('event', json.dumps(pkt))
 
     # Log that error somewhere for debugging...
-    logger.error(u"default_error_handler: {}, {} (endpoint={}, msg_id={})".format(
+    logger.error(u"[EngineSocket] default_error_handler: {}, {} (endpoint={}, msg_id={})".format(
         error_name, error_message, endpoint, msg_id
     ))
 
@@ -132,6 +132,9 @@ class Socket(EventEmitter):
         self._set_transport(transport)
         self.process_request(request)
 
+    def debug(self, message):
+        logger.debug(u"[EngineSocket][%s][id:%s] %s" % (self.ready_state, self.id, message))
+
     def _create_transport(self, request, supports_binary, transport_name):
         if transport_name not in handler_types:
             raise Exception('transport name not in query string')
@@ -144,7 +147,6 @@ class Socket(EventEmitter):
             raise Exception('Not able to construct transport class')
         return transport
 
-
     def _set_transport(self, transport):
         self.transport = transport
         self.transport.once('error', self.on_error, id(self))
@@ -154,7 +156,7 @@ class Socket(EventEmitter):
 
     def _clear_transport(self):
         self.transport.remove_listeners_by_key(id(self))
-        self.transport.on('error', lambda: logger.debug('error triggered by discarded transport'))
+        self.transport.on('error', lambda: logger.debug('[EngineSocket] error triggered by discarded transport'))
         self.transport = None
 
     def open(self):
@@ -195,7 +197,7 @@ class Socket(EventEmitter):
             packet_type = packet["type"]
 
             if packet_type == 'ping':
-                logger.debug("got ping, send pong")
+                self.debug("got ping, send pong")
                 self.send_packet('pong')
 
             elif packet_type == 'message':
@@ -205,13 +207,13 @@ class Socket(EventEmitter):
                 self.on_close("Parse error")
 
         else:
-            logger.debug("Packet received with closed socket")
+            self.debug("Packet received with closed socket")
 
     def on_error(self, error=None):
         """
         Invoked when an error message received from transport
         """
-        logger.debug("transport error: %s" % error)
+        self.debug("transport error: %s" % error)
         self.on_close('transport error', error)
 
     def on_close(self, *args, **kwargs):
@@ -237,10 +239,10 @@ class Socket(EventEmitter):
             self.write_buffer = None
 
     def maybe_upgrade(self, transport):
-        logger.debug("might upgrade from %s to %s" % (self.transport.name, transport.name))
+        self.debug("might upgrade from %s to %s" % (self.transport.name, transport.name))
 
         def fail_upgrade():
-            logger.debug('client did not complete upgrade - closing transport')
+            self.debug('client did not complete upgrade - closing transport')
 
             if self.check_eventlet:
                 self.check_eventlet.kill()
@@ -253,7 +255,7 @@ class Socket(EventEmitter):
 
         def check():
             if 'polling' == self.transport.name and self.transport.writable:
-                logger.debug("writing a noop packet to polling for fast upgrade")
+                self.debug("writing a noop packet to polling for fast upgrade")
                 self.transport.send([{
                                          "type": "noop"
                                      }])
@@ -276,7 +278,7 @@ class Socket(EventEmitter):
                 self.check_eventlet = gevent.Greenlet.spawn(loop)
 
             elif 'upgrade' == packet["type"] and self.ready_state == self.STATE_OPEN:
-                logger.debug("got upgrade packet - upgrading")
+                self.debug("got upgrade packet - upgrading")
 
                 transport.remove_listener('packet', on_packet)
 
@@ -325,7 +327,7 @@ class Socket(EventEmitter):
         """
         the primary send_packet method
         """
-        logger.debug('send_packet in socket data [%s]' % data)
+        self.debug('send_packet in socket data [%s]' % data)
         packet = {
             "type": packet_type
         }
@@ -349,17 +351,17 @@ class Socket(EventEmitter):
         Flush write buffer, if buffer is empty, wait on it.
         :param nowait: Whether wait on write buffer or return directly
         """
-        logger.debug("entering flushing buffer to transport " + str(self.transport.writable) + " " + str(self.write_buffer.qsize()))
+        self.debug("entering flushing buffer to transport " + str(self.transport.writable) + " " + str(self.write_buffer.qsize()))
         if self.ready_state != self.STATE_CLOSED and self.transport.writable:
             if nowait and self.write_buffer.qsize() == 0:
                 return
 
-            logger.debug('wait for the queue %s' % self.write_buffer.qsize())
+            self.debug('wait for the queue %s' % self.write_buffer.qsize())
             msg = [self.write_buffer.get()]
             while self.write_buffer.qsize():
                 msg.append(self.write_buffer.get())
 
-            logger.debug("flushing buffer to transport")
+            self.debug("flushing buffer to transport")
             self.transport.send(msg)
 
     def close(self):

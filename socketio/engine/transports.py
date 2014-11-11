@@ -53,6 +53,12 @@ class BaseTransport(EventEmitter):
         self.writable = False
         self.should_close = False
 
+    def debug(self, message):
+        """
+        The logging entry
+        """
+        logger.debug("[Transport:%s][%s][%s] %s" % (self.name, self.ready_state, self.writable, message))
+
     def send(self, packets):
         """
         The send interface, subclass must overwrite this method to provide correct implementation
@@ -80,7 +86,7 @@ class BaseTransport(EventEmitter):
         self.do_close()
 
     def _cleanup(self):
-        logger.debug('clean up in transport')
+        self.debug('clean up in transport')
         self.handler.remove_listener('cleanup', self._cleanup)
         self.request = None
         self.handler = None
@@ -103,7 +109,7 @@ class BaseTransport(EventEmitter):
                 'description': message
             })
         else:
-            logger.debug("Ignored transoport error %s" % message)
+            self.debug("Ignored transoport error %s" % message)
 
     def on_packet(self, packet):
         self.emit('packet', packet)
@@ -148,12 +154,12 @@ class PollingTransport(BaseTransport):
 
     def on_poll_request(self, request):
         if self.request is not None and self.request is not request:
-            logger.debug('request overlap')
+            self.debug('request overlap')
             self.on_error('overlap from client')
             self.request.response.end(500)
             return
 
-        logger.debug('setting request')
+        self.debug('setting request')
 
         self.request = request
         request.response.on('post_end', self._cleanup_poll)
@@ -168,7 +174,7 @@ class PollingTransport(BaseTransport):
         self.emit('drain')
 
         if self.should_close:
-            logger.debug('triggering empty send to append close packet')
+            self.debug('triggering empty send to append close packet')
             self.send([{'type': 'noop'}])
 
     def on_data_request(self, request):
@@ -199,11 +205,11 @@ class PollingTransport(BaseTransport):
         :return:
         """
 
-        logger.debug('received %s', data)
+        self.debug('received %s' % data)
 
         for packet, index, total in Parser.decode_payload(data):
             if packet['type'] == 'close':
-                logger.debug('got xhr close packet')
+                self.debug('got xhr close packet')
                 self.on_close()
                 break
             self.on_packet(packet)
@@ -225,17 +231,17 @@ class PollingTransport(BaseTransport):
         raise NotImplementedError()
 
     def do_close(self):
-        logger.debug('closing')
+        self.debug('closing')
 
         if self.data_request:
-            logger.debug('aborting ongoing data request')
-            # self.data_request.abort()
+            self.debug('aborting ongoing data request')
+            self.data_request.abort()
 
         if self.writable:
             self.send([{'type': 'close'}])
 
         else:
-            logger.debug('transport not writable - buffering orderly close')
+            self.debug('transport not writable - buffering orderly close')
             self.should_close = True
 
     def poll(self):
@@ -346,7 +352,7 @@ class WebsocketTransport(BaseTransport):
     def send(self, packets):
         for packet in packets:
             encoded = Parser.encode_packet(packet, self.supports_binary)
-            logger.debug('writing %s', encoded)
+            self.debug('writing %s' % encoded)
             self.writable = False
             try:
                 self.websocket.send(encoded)
@@ -356,7 +362,7 @@ class WebsocketTransport(BaseTransport):
             self.writable = True
 
     def do_close(self):
-        logger.debug('clean all the jobs')
+        self.debug('clean all the jobs')
         for job in self.jobs:
             gevent.kill(job)
         self.websocket.close()
