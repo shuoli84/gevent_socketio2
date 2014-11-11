@@ -6,6 +6,7 @@ from django.utils.importlib import import_module
 
 from django.conf.urls import patterns
 
+logger = logging.getLogger("socketio")
 
 LOADING_SOCKETIO = False
 
@@ -45,10 +46,13 @@ def autodiscover():
 def socketio(request):
     try:
         socket = request.environ.get('engine_socket', None)
+        logger.debug("[SocketIOView] Got engine_socket %s" % socket)
         if socket is not None:
+            logger.debug("[SocketIOView] Set request to context")
             socket.context['request'] = request
     except:
-        logging.getLogger("socketio").error("Exception while handling socketio connection", exc_info=True)
+        logger.error("[SocketIOView] Exception while handling socketio connection", exc_info=True)
+
     return HttpResponse("")
 
 autodiscover()
