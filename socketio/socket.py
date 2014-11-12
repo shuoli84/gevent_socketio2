@@ -7,15 +7,13 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-__all__ = ['Socket', 'events', 'flags']
+__all__ = ['Socket', 'flags']
 
 # these events are preserved for internal usage, socket can't emit these to clients
 events = [
     'error',
     'connect',
     'disconnect',
-    'new_listener',
-    'remove_listener'
 ]
 
 flags = [
@@ -44,7 +42,6 @@ class Socket(EventEmitter):
         self.flags = set()
         self.acks = {}
         self.connected = True
-        self.disconnected = False
 
     def emit(self, event, *args):
         """
@@ -102,14 +99,14 @@ class Socket(EventEmitter):
         self.client.packet(p, pre_encoded)
 
     def join(self, room, callback=None):
-        logger.debug('joining room %s', room)
+        self.debug('joining room %s' % room)
         if room in self.rooms:
             return self
 
         def cb(err=None):
             if err:
                 return cb and cb(err)
-            logger.debug('joined room %s', room)
+            self.debug('joined room %s' % room)
             self.rooms.append(room)
             callback and callback()
 
@@ -117,13 +114,13 @@ class Socket(EventEmitter):
         return self
 
     def leave(self, room, callback=None):
-        logger.debug('leaving room %s', room)
+        self.debug('leaving room %s' % room)
 
         def cb(err):
             if err:
                 return callback and callback(err)
 
-            logger.debug('left room %s', room)
+            self.debug('left room %s' % room)
             self.rooms.remove(room)
             callback and callback()
 
@@ -135,13 +132,13 @@ class Socket(EventEmitter):
         self.rooms = []
 
     def on_connect(self, *args, **kwargs):
-        logger.debug('socket connected - writing packet')
+        self.debug('socket connected - writing packet')
         self.join(self.id)
         self.packet({'type': parser.CONNECT})
         self.namespace.connected[self.id] = self
 
     def on_packet(self, packet, *args, **kwargs):
-        logger.debug('got packet %s', packet['type'])
+        self.debug('got packet %s' % packet['type'])
 
         _type = packet['type']
 
@@ -169,7 +166,6 @@ class Socket(EventEmitter):
         if len(packet_data) == 1:
             packet_data = packet_data[0]
 
-        # Use the EventEmitter's emit to notify all listener
         super(Socket, self).emit(event, packet_data)
 
     def ack(self, id):
@@ -184,7 +180,7 @@ class Socket(EventEmitter):
 
     def on_ack(self, packet):
         if 'id' not in packet or packet['id'] not in self.acks:
-            logger.debug('bad ack %s', packet['id'])
+            self.debug('bad ack %s' % packet['id'])
         else:
             _id = packet['id']
             ack = self.acks[_id]
@@ -192,21 +188,23 @@ class Socket(EventEmitter):
             self.acks.pop(_id)
 
     def on_disconnect(self):
-        logger.debug('got disconnect packet')
+        self.debug('got disconnect packet')
         self.on_close('client namespace disconnect')
 
     def on_close(self, reason=None, *args, **kwargs):
+        self.debug("On close %s" % reason)
+
         if not self.connected:
             return
 
-        logger.debug('closing socket - reason %s', reason)
+        self.debug('closing socket - reason %s' % reason)
         self.leave_all()
         self.namespace.remove(self)
         self.namespace.connected.pop(self.id)
         self.client.remove(self)
         self.connected = False
-        self.disconnected = True
         self.emit('disconnect', reason)
+        self.debug('socket closed')
 
     def disconnect(self, close):
         if not self.connected:
@@ -230,3 +228,5 @@ class Socket(EventEmitter):
         self.flags.add(flag)
         return self
 
+    def debug(self, message):
+        logger.debug("[SocketIOSocket(%s)][%s][C:%d] %s" % (self.namespace.name, self.id,  int(self.connected), message))

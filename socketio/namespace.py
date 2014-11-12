@@ -35,7 +35,7 @@ class Namespace(EventEmitter):
         return self
 
     def add(self, client, callback=None):
-        logger.debug('adding client to namespace %s', self.name)
+        self.debug('adding client to namespace %s' % self.name)
 
         socket = Socket(self, client)
 
@@ -49,19 +49,22 @@ class Namespace(EventEmitter):
             self.emit('connect', socket)
             self.emit('connection', socket)
         else:
-            logger.debug('Client was closed, ignore socket')
+            self.debug('Client was closed, ignore socket')
 
         return socket
 
     def remove(self, socket):
+        self.debug("Removing socket %s from namespace" % socket.id)
         if socket in self.sockets:
+            self.debug("Found socket, remove it")
             self.sockets.remove(socket)
             super(Namespace, self).emit('disconnect', socket)
+            self.debug("Socket removed")
         else:
-            logger.debug('ignoring remove for %s', socket.id)
+            self.debug('ignoring remove for %s' % socket.id)
 
     def emit(self, event, *args):
-        if event in ['connect', 'connection', 'newListener']:
+        if event in ['connect', 'connection']:
             super(Namespace, self).emit(event, *args)
         else:
             _type = SocketIOParser.EVENT
@@ -97,3 +100,6 @@ class Namespace(EventEmitter):
             self.ids += 1
 
         return result
+
+    def debug(self, message):
+        logger.debug("[Namespace][id:%d] %s" % (self.ids, message))

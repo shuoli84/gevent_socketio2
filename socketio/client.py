@@ -18,7 +18,7 @@ class Client(EventEmitter):
         self.engine_socket = engine_socket
         self.request = engine_socket.request
         self.id = engine_socket.id
-        self.sockets = []
+        self.sockets = []  # TODO check whether this introduced performance bottle neck
         self.namespace_socket = {}
         self.connect_buffer = []
 
@@ -32,9 +32,9 @@ class Client(EventEmitter):
         :return:
         """
 
-        self.decoder.on('decoded', self.on_decoded)
-        self.engine_socket.on('message', self.on_data)
-        self.engine_socket.on('close', self.on_close)
+        self.decoder.on('decoded', self.on_decoded, id(self))
+        self.engine_socket.on('message', self.on_data, id(self))
+        self.engine_socket.on('close', self.on_close, id(self))
 
     def connect(self, name):
         """
@@ -43,7 +43,7 @@ class Client(EventEmitter):
         :return:
         """
 
-        logger.debug('connecting to namespace %s', name)
+        self.debug('connecting to namespace %s' % name)
 
         if name not in self.server.namespaces:
             self.packet({
@@ -91,7 +91,7 @@ class Client(EventEmitter):
             del self.sockets[index]
             del self.namespace_socket[nsp]
         except ValueError:
-            logger.debug('ignoring remove for %s', socket.id)
+            self.debug('ignoring remove for %s' % socket.id)
 
     def close(self):
         """
@@ -99,7 +99,7 @@ class Client(EventEmitter):
         :return:
         """
         if self.engine_socket.ready_state == EngineSocket.STATE_OPEN:
-            logger.debug('forcing transport close')
+            self.debug('forcing transport close')
             self.engine_socket.close()
             self.on_close('forced server close')
 
@@ -111,7 +111,7 @@ class Client(EventEmitter):
         :return:
         """
         if self.engine_socket.ready_state == EngineSocket.STATE_OPEN:
-            logger.debug('writing packet %s', str(packet))
+            self.debug('writing packet %s' % str(packet))
 
             if not pre_encoded:
                 encoded_packets = self.encoder.encode(packet)
@@ -133,18 +133,21 @@ class Client(EventEmitter):
             if socket:
                 socket.on_packet(packet)
             else:
-                logger.debug('no socket for namespace %s', packet['nsp'])
+                self.debug('no socket for namespace %s' % packet['nsp'])
 
     def on_close(self, reason, *args, **kwargs):
+        self.debug("On Close %s" % reason)
         self.destroy()
 
-        for socket in self.sockets:
+        while self.sockets:
+            socket = self.sockets.pop()
             socket.on_close(reason)
 
         self.decoder.destroy()
 
     def destroy(self):
-        self.engine_socket.remove_listener('message', self.on_data)
-        self.engine_socket.remove_listener('close', self.on_close)
-        self.decoder.remove_listener('decoded', self.on_decoded)
+        self.engine_socket.remove_listeners_by_key(id(self))
+        self.decoder.remove_listeners_by_key(id(self))
 
+    def debug(self, message):
+        logger.debug("[SocketIOClient][%s] %s" % (self.id, message))

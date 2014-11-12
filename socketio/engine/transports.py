@@ -7,6 +7,7 @@ import logging
 
 from ..event_emitter import EventEmitter
 from .parser import Parser
+from socketio.engine.response import Response
 
 logger = logging.getLogger(__name__)
 
@@ -67,9 +68,9 @@ class BaseTransport(EventEmitter):
         raise NotImplementedError()
 
     def do_close(self):
-        raise NotImplementedError()
+        self.on_close()
 
-    def close(self):
+    def close(self, reason=""):
         """
         Close the transport, it may happen in:
         1. The client send a close message
@@ -210,7 +211,7 @@ class PollingTransport(BaseTransport):
         for packet, index, total in Parser.decode_payload(data):
             if packet['type'] == 'close':
                 self.debug('got xhr close packet')
-                self.on_close()
+                self.close()
                 break
             self.on_packet(packet)
 
@@ -317,8 +318,6 @@ class JSONPollingTransport(PollingTransport):
 
 class WebsocketTransport(BaseTransport):
     name = 'websocket'
-    handles_upgrades = True
-    supports_framing = True
 
     def __init__(self, *args, **kwargs):
         self.websocket = None
@@ -335,17 +334,24 @@ class WebsocketTransport(BaseTransport):
                 while True:
                     try:
                         message = self.websocket.receive()
-                    except WebSocketError:
-                        self.close()
+                    except WebSocketError, e:
+                        self.on_error(str(e))
 
                     if message is None:
                         break
 
                     self.on_data(message)
 
+                # Here the websocket break, means it is closed
+                self.debug("websocket closed")
+                self.close()
+                try:
+                    request.response.end(200, 'The websocket closed')
+                except Response.ResponseAlreadyEnded:
+                    self.debug("The websocket already ended, ignore this exception")
+
             job = gevent.spawn(read_from_ws)
             self.jobs.append(job)
-
         else:
             request.response.end(500, 'not able to create websocket')
 
@@ -356,8 +362,8 @@ class WebsocketTransport(BaseTransport):
             self.writable = False
             try:
                 self.websocket.send(encoded)
-            except WebSocketError:
-                self.close()
+            except WebSocketError, e:
+                self.on_error(str(e))
 
             self.writable = True
 
@@ -366,3 +372,4 @@ class WebsocketTransport(BaseTransport):
         for job in self.jobs:
             gevent.kill(job)
         self.websocket.close()
+        self.on_close()

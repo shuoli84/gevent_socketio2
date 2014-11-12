@@ -221,20 +221,31 @@ class Socket(EventEmitter):
         When transport closed, this method will be called. It will remove all jobs, and do cleanup
         """
         if self.STATE_CLOSED != self.ready_state:
+            self.debug("Socket on close, clean things up")
+
+            if self.STATE_CLOSING != self.ready_state:
+                self.ready_state = self.STATE_CLOSING
+
+            self.debug("Clean ping job")
             if self.ping_timeout_eventlet:
-                self.ping_timeout_eventlet.kill()
+                gevent.kill(self.ping_timeout_eventlet)
                 self.ping_timeout_eventlet = None
 
+            self.debug("clean upgrade check job")
             if self.check_eventlet:
-                self.check_eventlet.kill()
+                gevent.kill(self.check_eventlet)
                 self.check_eventlet = None
 
+            self.debug("clean upgrade job")
             if self.upgrade_eventlet:
-                self.upgrade_eventlet.kill()
+                gevent.kill(self.upgrade_eventlet)
                 self.upgrade_eventlet = None
 
+            self.debug("clean transport")
             self._clear_transport()
             self.ready_state = self.STATE_CLOSED
+
+            self.debug("Emit close to listeners")
             self.emit("close", "Transport closed", *args, **kwargs)
             self.write_buffer = None
 
@@ -245,7 +256,7 @@ class Socket(EventEmitter):
             self.debug('client did not complete upgrade - closing transport')
 
             if self.check_eventlet:
-                self.check_eventlet.kill()
+                gevent.kill(self.check_eventlet)
                 self.check_eventlet = None
 
             if 'open' == transport.ready_state:
@@ -268,7 +279,7 @@ class Socket(EventEmitter):
                                 }])
 
                 if self.check_eventlet is not None:
-                    self.check_eventlet.kill()
+                    gevent.kill(self.check_eventlet)
 
                 def loop():
                     while True:
@@ -287,7 +298,7 @@ class Socket(EventEmitter):
 
                 self.upgraded = True
                 self._set_ping_timeout_eventlet()
-                self.upgrade_eventlet.kill()
+                gevent.kill(self.upgrade_eventlet)
                 self.flush_nowait()
             else:
                 transport.close()
@@ -300,7 +311,7 @@ class Socket(EventEmitter):
         :return:
         """
         if self.ping_timeout_eventlet:
-            self.ping_timeout_eventlet.kill()
+            gevent.kill(self.ping_timeout_eventlet)
 
         def time_out():
             self.on_close('ping timeout')
