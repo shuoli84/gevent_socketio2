@@ -188,7 +188,7 @@ class Socket(EventEmitter):
         :param packet:
         """
 
-        print "Received packet: %s" % str(packet)
+        self.debug("Received packet: %s" % str(packet))
 
         if self.STATE_OPEN == self.ready_state:
             self.emit("packet", packet)

@@ -39,9 +39,14 @@ class EngineHandler(WSGIHandler, EventEmitter):
         self.environ['engine_socket'] = socket
 
         try:
-            start_response = lambda status, headers, exc=None: None
-            self.application(self.environ, start_response)
-        except:
+
+            def start_response(status, headers):
+                logger.debug("[EngineHandler] [%s] [%s]" % (status, headers))
+
+            res = self.application(self.environ, start_response)
+            logger.debug("[EngineHandler] %s" % res)
+        except Exception, e:
+            logger.debug("[EngineHandler] bind framework info met exception %s" % e)
             self.handle_error(*sys.exc_info())
 
     def handle_one_response(self):
