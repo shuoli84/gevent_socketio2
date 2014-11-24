@@ -128,6 +128,10 @@ class Client(EventEmitter):
         if Parser.CONNECT == packet['type']:
             self.connect(packet['nsp'])
         else:
+            if packet['nsp'] not in self.namespace_socket:
+                self.debug('The namespace is not connected yet, ignore the incoming message')
+                return
+
             socket = self.namespace_socket[packet['nsp']]
 
             if socket:
