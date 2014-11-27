@@ -43,7 +43,7 @@ class Socket(EventEmitter):
         self.acks = {}
         self.connected = True
 
-    def emit(self, event, *args):
+    def emit(self, event, *args, **kwargs):
         """
         the interface for both sending messages and normal event notification
         If the event is predefined events, then emit the event to listeners, otherwise
@@ -63,7 +63,19 @@ class Socket(EventEmitter):
 
             packet['data'] = [event] + list(args)
 
-            if len(self.rooms_send_to) > 0 or 'broadcast' in self.flags:
+            broadcast = len(self.rooms_send_to) > 0 or 'broadcast' in self.flags
+
+            if 'callback' in kwargs:
+                if broadcast:
+                    raise RuntimeError('Callback not supported in broadcast packet')
+
+                self.debug('emitting packet with ack id %d' % self.namespace.ids)
+
+                packet['id'] = self.namespace.ids
+                self.namespace.ids += 1
+                self.acks[packet['id']] = kwargs['callback']
+
+            if broadcast:
                 self.adapter.broadcast(packet, {
                     'except': [self.id],
                     'rooms': self.rooms_send_to,
@@ -158,7 +170,7 @@ class Socket(EventEmitter):
     def on_event(self, packet):
         if 'id' in packet:
             callback = self.ack(packet['id'])
-            print "NOT IMPLEMENTED THE ACK"
+            raise RuntimeError("NOT IMPLEMENTED THE ACK")
 
         packet_data = packet.get('data', [])
 
@@ -180,11 +192,17 @@ class Socket(EventEmitter):
 
     def on_ack(self, packet):
         if 'id' not in packet or packet['id'] not in self.acks:
-            self.debug('bad ack %s' % packet['id'])
+            self.debug('bad ack %s %s' % (packet, self.acks))
         else:
             _id = packet['id']
             ack = self.acks[_id]
-            ack(packet['data'])
+            self.debug('calling ack %s with %s' % (_id, unicode(packet['data'])))
+            event = packet['data'][0]
+            if len(packet['data']) > 1:
+                data = packet['data'][1]
+            else:
+                data = None
+            ack(event, data)
             self.acks.pop(_id)
 
     def on_disconnect(self):

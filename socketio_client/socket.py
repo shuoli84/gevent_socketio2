@@ -154,10 +154,11 @@ class Socket(EventEmitter):
         callback = None
         if 'id' in packet:
             logger.debug('attaching ack callback to event')
-            callback = self.acks[packet['id']]
+            callback = self.ack(packet['id'])
 
         if self.connected:
-            super(Socket, self).emit(*data, callback=callback)
+            super(Socket, self).emit(*data)
+            callback(data) if callback is not None else None
         else:
             self.recv_buffer.append((data, callback))
 
@@ -171,22 +172,23 @@ class Socket(EventEmitter):
             'sent': False
         }
 
-        def callback(packets):
+        def callback(data):
             """
             callback which sends the ack packet to anti party
-            :param packets: list | tuple
+            :param data: list | tuple
             :return:
             """
+            logger.debug("[SocketIOSocket] ACK Callback")
             if context['sent']:
                 return
 
             context['sent'] = True
-            packet_type = Parser.BINARY_ACK if has_bin(packets) else Parser.ACK
+            packet_type = Parser.BINARY_ACK if has_bin(data) else Parser.ACK
 
             self.packet({
                 'type': packet_type,
                 'id': _id,
-                'data': packets
+                'data': data
             })
 
         return callback
@@ -208,7 +210,9 @@ class Socket(EventEmitter):
         logger.debug('emit buffered packets')
 
         for data, callback in self.recv_buffer:
-            self.emit(*data, callback=callback)
+            super(Socket, self).emit(*data)
+            callback(data) if callback is not None else None
+
         self.recv_buffer = []
 
         for packet in self.send_buffer:

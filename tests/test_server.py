@@ -6,7 +6,7 @@ import json
 import gevent
 
 import requests
-from socketio.server import serve, SocketIOServer
+from socketio.server import SocketIOServer
 from socketio.engine.parser import Parser as EngineParser
 import socketio.parser as SocketIOParser
 

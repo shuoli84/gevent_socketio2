@@ -204,7 +204,7 @@ class Decoder(EventEmitter):
                     _id += c
                     i += 1
 
-                p['id'] = _id
+                p['id'] = int(_id)
 
         # look up json data
         i += 1

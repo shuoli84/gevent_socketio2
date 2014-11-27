@@ -1,12 +1,13 @@
 from gevent.monkey import patch_all
-from socketio.server import SocketIOServer
-
 patch_all()
 import gevent
-
+from socketio.server import SocketIOServer
 from socketio_client.client import SocketIOClient
 from tests.socketio_test_server import SocketIOServerBaseTest
 
+
+def callback(event, data=None):
+    print 'callback' + unicode(data)
 
 class SocketTest(SocketIOServerBaseTest):
     show_log = True
@@ -20,8 +21,8 @@ class SocketTest(SocketIOServerBaseTest):
 
         def message(socket):
             socket.on('message', SocketTest.on_message)
-            socket.emit('message', {'hello': 'world'})
-            socket.emit('message', {'hello': True, 'world': bytearray('world')})
+            socket.emit('message', {'hello': 'world'}, callback=callback)
+            socket.emit('message', {'hello': True, 'world': bytearray('world')}, callback=callback)
 
         ns.on('connection', message)
 
@@ -32,7 +33,7 @@ class SocketTest(SocketIOServerBaseTest):
 
     @classmethod
     def on_socket_message(cls, data, **kwargs):
-        print "Client Socket: " + str(data)
+        print "Client Socket: " + str(data) + str(kwargs)
 
     def test_socket(self):
         client = SocketIOClient('http://%s:%s/socket.io/' % (self.host, self.port))
