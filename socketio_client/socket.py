@@ -130,6 +130,7 @@ class Socket(EventEmitter):
 
         if 'callback' in kwargs:
             cb = kwargs['callback']
+
             if cb:
                 self.acks[self.ids] = cb
                 packet['id'] = self.ids
@@ -197,7 +198,9 @@ class Socket(EventEmitter):
         logger.debug('calling ack %s with %s', packet['id'], packet['data'])
 
         cb = self.acks.pop(packet['id'])
-        cb(packet['data'])
+        event = packet['data'][0]
+        data = packet['data'][1:] if len(packet['data']) > 1 else None
+        cb(event, data)
 
     def on_connect(self):
         self.ready_state = 'open'

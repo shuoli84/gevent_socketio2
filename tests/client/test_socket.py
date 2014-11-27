@@ -14,7 +14,6 @@ class SocketTest(SocketIOServerBaseTest):
 
     def setUp(self):
         super(SocketTest, self).setUp()
-        # Setup a chat namespace
 
         ns = SocketIOServer.default_server.of('chat')
         ns.on('message', SocketTest.on_message)
@@ -41,7 +40,7 @@ class SocketTest(SocketIOServerBaseTest):
         gevent.sleep(.5)
 
         socket = client.socket('chat')
-        socket.emit('message', {'what': 'the'})
+        socket.emit('message', {'what': 'the'}, callback=callback)
 
         socket.on('message', self.on_socket_message)
 

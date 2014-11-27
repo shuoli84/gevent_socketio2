@@ -168,9 +168,6 @@ class Socket(EventEmitter):
             self.emit('error', packet["data"])
 
     def on_event(self, packet):
-        if 'id' in packet:
-            callback = self.ack(packet['id'])
-            raise RuntimeError("NOT IMPLEMENTED THE ACK")
 
         packet_data = packet.get('data', [])
 
@@ -180,15 +177,13 @@ class Socket(EventEmitter):
 
         super(Socket, self).emit(event, packet_data)
 
-    def ack(self, id):
-        def cb(data):
-            _type = parser.ACK if not has_bin(data) else parser.BINARY_ACK
+        if 'id' in packet:
+            _type = parser.ACK if not has_bin(packet['data']) else parser.BINARY_ACK
             self.packet({
-                'id': id,
+                'id': packet['id'],
                 'type': _type,
-                'data': data
+                'data': [event, packet_data]
             })
-        return cb
 
     def on_ack(self, packet):
         if 'id' not in packet or packet['id'] not in self.acks:
