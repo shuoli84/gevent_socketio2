@@ -338,7 +338,7 @@ class Socket(EventEmitter):
         """
         the primary send_packet method
         """
-        self.debug('send_packet in socket data [%s]' % data)
+        self.debug('send_packet in socket data [%s]' % data if type(data) is str else "BINARY")
         packet = {
             "type": packet_type
         }

@@ -17,9 +17,7 @@ class Transport(EventEmitter):
     protocol_version = 3
     name = '_base_transport'
 
-    def __init__(self, path, host, port,
-                 secure=False, query=None, agent=None,
-                 force_base64=False, support_xdr=True):
+    def __init__(self, path, host, port, secure=False, query=None, agent=None, force_base64=False):
         self.path = path
         self.hostname = host
         self.port = port
