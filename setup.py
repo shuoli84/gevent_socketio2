@@ -14,7 +14,7 @@ setup(
     'greenlet==0.4.4',
     'gevent-websocket==0.9.3',
     'WebOb==1.4',
-    'requests==2.4.1',
+    'requests==2.20.0',
     'ws4py==0.3.4',
   ],
 )
